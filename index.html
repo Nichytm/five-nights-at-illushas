@@ -1,0 +1,2473 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Five Nights at Illusha's</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Creepster&family=Share+Tech+Mono&family=Exo+2:wght@300;400;700;900&display=swap');
+
+  :root {
+    --blood: #8b0000;
+    --orange: #ff6a00;
+    --yellow: #ffd700;
+    --green: #00ff88;
+    --blue: #00c8ff;
+    --purple: #b464ff;
+    --dark: #080808;
+    --panel: rgba(0,0,0,0.85);
+    --neon-border: #00ff88;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; user-select:none; }
+
+  body {
+    background: #000;
+    font-family: 'Share Tech Mono', monospace;
+    overflow: hidden;
+    width: 100vw; height: 100vh;
+  }
+
+  canvas { display:block; }
+
+  /* ──────── SCREENS ──────── */
+  .screen {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    background: #050505;
+    transition: opacity 0.4s;
+  }
+  .screen.hidden { display: none; }
+
+  /* ──────── MAIN MENU ──────── */
+  #menuScreen {
+    background: radial-gradient(ellipse at 50% 60%, #1a0a00 0%, #050000 70%);
+    gap: 0;
+  }
+  #menuScreen::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,50,0,0.03) 2px, rgba(255,50,0,0.03) 4px);
+    pointer-events: none;
+  }
+
+  .menu-title {
+    font-family: 'Creepster', cursive;
+    font-size: clamp(28px, 5vw, 58px);
+    color: var(--orange);
+    text-shadow: 0 0 30px rgba(255,106,0,0.8), 0 0 60px rgba(255,50,0,0.5), 2px 2px 0 #000;
+    letter-spacing: 2px;
+    margin-bottom: 8px;
+    animation: titlePulse 3s ease-in-out infinite;
+  }
+  .menu-subtitle {
+    font-size: 13px; color: #664433; letter-spacing: 4px;
+    text-transform: uppercase; margin-bottom: 28px;
+  }
+
+  @keyframes titlePulse {
+    0%,100% { text-shadow: 0 0 30px rgba(255,106,0,0.8), 0 0 60px rgba(255,50,0,0.5), 2px 2px 0 #000; }
+    50% { text-shadow: 0 0 50px rgba(255,106,0,1), 0 0 100px rgba(255,50,0,0.8), 2px 2px 0 #000; }
+  }
+
+  .menu-stats {
+    display: flex; gap: 24px; margin-bottom: 24px;
+    font-size: 13px;
+  }
+  .stat-chip {
+    padding: 6px 14px;
+    border: 1px solid #332211;
+    border-radius: 4px;
+    background: rgba(255,100,0,0.06);
+    color: var(--yellow);
+  }
+
+  .menu-buttons {
+    display: flex; flex-direction: column; gap: 8px;
+    width: min(280px, 90vw);
+  }
+
+  .btn {
+    padding: 12px 20px;
+    border: 1px solid #443322;
+    border-radius: 6px;
+    background: rgba(30,15,5,0.9);
+    color: #ccc;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 15px;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.18s;
+    position: relative;
+    overflow: hidden;
+  }
+  .btn::before {
+    content: '';
+    position: absolute; left: 0; top: 0; bottom: 0; width: 0;
+    background: linear-gradient(90deg, rgba(255,106,0,0.15), transparent);
+    transition: width 0.2s;
+  }
+  .btn:hover { border-color: var(--orange); color: #fff; transform: translateX(4px); }
+  .btn:hover::before { width: 100%; }
+  .btn:active { transform: translateX(2px) scale(0.98); }
+  .btn.danger { border-color: #660000; color: #ff6666; }
+  .btn.danger:hover { border-color: #ff3333; background: rgba(80,0,0,0.5); }
+  .btn.primary { border-color: var(--orange); color: var(--orange); font-size: 17px; text-align: center; }
+  .btn.green-btn { border-color: var(--green); color: var(--green); }
+  .btn.green-btn:hover { background: rgba(0,255,136,0.1); }
+
+  /* ──────── PANELS / CARDS ──────── */
+  .panel {
+    background: rgba(10,8,5,0.95);
+    border: 1px solid #332211;
+    border-radius: 10px;
+    padding: 24px;
+    width: min(700px, 96vw);
+    max-height: 92vh;
+    overflow-y: auto;
+  }
+  .panel h2 {
+    font-family: 'Creepster', cursive;
+    font-size: 32px;
+    color: var(--orange);
+    margin-bottom: 18px;
+    text-align: center;
+  }
+
+  .card {
+    border: 1px solid #332211;
+    border-radius: 8px;
+    padding: 14px;
+    margin-bottom: 10px;
+    background: rgba(20,10,5,0.7);
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .card:hover { border-color: var(--orange); background: rgba(40,20,5,0.7); }
+  .card.unlocked { border-color: #005522; background: rgba(0,40,15,0.4); }
+  .card.active-item { border-color: var(--yellow); }
+
+  /* ──────── OVERLAY SCREENS ──────── */
+  #diffScreen, #shopScreen, #achScreen, #questScreen,
+  #diaryScreen, #settingsScreen, #controlsScreen, #leaderScreen {
+    background: rgba(5,2,0,0.97);
+  }
+
+  /* ──────── GAME CANVAS ──────── */
+  #gameCanvas {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+  }
+
+  /* ──────── NOTIFICATIONS ──────── */
+  #notifContainer {
+    position: absolute; top: 12px; left: 50%;
+    transform: translateX(-50%);
+    display: flex; flex-direction: column; gap: 8px;
+    pointer-events: none; z-index: 100;
+    width: min(500px, 94vw);
+  }
+  .notif {
+    padding: 10px 18px;
+    border-radius: 6px;
+    font-size: 13px;
+    border-left: 3px solid currentColor;
+    background: rgba(0,0,0,0.9);
+    animation: notifIn 0.3s ease-out;
+    backdrop-filter: blur(4px);
+  }
+  @keyframes notifIn { from { opacity:0; transform:translateY(-10px); } to { opacity:1; transform:none; } }
+
+  /* ──────── ACHIEVEMENT POPUP ──────── */
+  #achPopup {
+    position: absolute; top: -120px; left: 50%;
+    transform: translateX(-50%);
+    background: rgba(10,8,3,0.97);
+    border: 2px solid var(--yellow);
+    border-radius: 12px;
+    padding: 16px 24px;
+    width: min(420px, 92vw);
+    display: flex; gap: 16px; align-items: center;
+    transition: top 0.4s cubic-bezier(.175,.885,.32,1.275);
+    z-index: 200;
+  }
+  #achPopup.show { top: 12px; }
+  #achPopup .ach-icon { font-size: 36px; }
+  #achPopup .ach-name { color: var(--yellow); font-size: 15px; font-weight: bold; }
+  #achPopup .ach-desc { color: #888; font-size: 12px; margin-top: 4px; }
+
+  /* ──────── MINIGAME OVERLAY ──────── */
+  #minigameOverlay {
+    position: absolute; inset: 0;
+    background: rgba(0,0,0,0.88);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 20px; z-index: 150;
+  }
+  #minigameOverlay.hidden { display: none; }
+  .mg-title { font-family:'Creepster',cursive; font-size: 38px; color: #ff3333; animation: blink 0.5s step-end infinite; }
+  @keyframes blink { 50% { opacity:0; } }
+  .mg-bar-wrap { position: relative; width: min(600px, 90vw); height: 44px; }
+  .mg-bar-bg { width: 100%; height: 100%; background: #1a1a1a; border-radius: 8px; overflow:hidden; }
+  .mg-zone { position: absolute; top:0; height:100%; background: rgba(0,200,0,0.4); border: 1px solid #00cc00; border-radius:4px; }
+  .mg-cursor { position: absolute; top:-6px; bottom:-6px; width: 28px; background: #ff4444; border-radius: 5px; transition: left 0.05s linear; }
+  .mg-hint { color: #aaa; font-size: 14px; }
+  .mg-attempts { color: var(--yellow); font-size: 18px; }
+
+  /* ──────── INTERCOM DIALOG ──────── */
+  #intercomOverlay {
+    position: absolute; inset: 0;
+    background: rgba(0,0,0,0.85);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: flex-end;
+    padding-bottom: 60px; gap: 16px; z-index: 140;
+  }
+  #intercomOverlay.hidden { display:none; }
+  .ic-greeting {
+    color: #ffdc64; font-size: clamp(14px,2.5vw,20px);
+    text-align: center; max-width: 80%;
+    background: rgba(0,0,0,0.7); padding: 12px 20px; border-radius: 8px;
+    border: 1px solid #664400;
+  }
+  .ic-timer { color: #ff5555; font-size: 18px; }
+  .ic-options { display:flex; flex-direction:column; gap:10px; width: min(700px, 92vw); }
+  .ic-btn {
+    padding: 14px 20px;
+    background: rgba(30,20,5,0.9);
+    border: 1px solid #554422;
+    border-radius: 10px; cursor: pointer; color: #eee;
+    font-family: 'Share Tech Mono', monospace; font-size: 14px;
+    transition: all 0.15s; text-align: left;
+  }
+  .ic-btn:hover { border-color: var(--yellow); color: #fff; background: rgba(60,40,10,0.9); }
+
+  /* ──────── PAUSE ──────── */
+  #pauseOverlay {
+    position: absolute; inset: 0;
+    background: rgba(0,0,0,0.82);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 20px; z-index: 130;
+  }
+  #pauseOverlay.hidden { display:none; }
+  .pause-title { font-family:'Creepster',cursive; font-size:52px; color: var(--blue); }
+
+  /* ──────── VOLUME SLIDER ──────── */
+  .vol-wrap { display:flex; align-items:center; gap:12px; }
+  .vol-wrap label { color:#aaa; font-size:13px; min-width:80px; }
+  input[type=range] {
+    -webkit-appearance:none; width:200px; height:6px;
+    background: #333; border-radius:3px; outline:none;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance:none; width:18px; height:18px;
+    border-radius:50%; background: var(--orange); cursor:pointer;
+  }
+
+  /* ──────── DIFFICULTY BUTTONS ──────── */
+  .diff-grid { display:flex; gap:14px; flex-wrap:wrap; justify-content:center; }
+  .diff-card {
+    width: 200px; padding:18px; border-radius:12px;
+    border: 2px solid; cursor:pointer; text-align:center;
+    transition: all 0.2s; background: rgba(10,10,10,0.8);
+  }
+  .diff-card:hover { transform: translateY(-4px); filter: brightness(1.3); }
+  .diff-card .dc-label { font-family:'Creepster',cursive; font-size:24px; margin-bottom:8px; }
+  .diff-card .dc-desc { font-size:12px; color:#bbb; }
+  .diff-card .dc-bonus { font-size:11px; margin-top:6px; }
+
+  /* ──────── SHOP ──────── */
+  .shop-item {
+    display:flex; align-items:center; gap:14px;
+    padding:12px; border-radius:8px;
+    border:1px solid #332211; background:rgba(15,10,5,0.7);
+    margin-bottom:8px; transition: all 0.15s;
+  }
+  .shop-item:hover { border-color:var(--orange); }
+  .shop-item.owned { border-color:#003311; background:rgba(0,30,10,0.5); }
+  .shop-item.cant-afford { opacity:0.5; }
+  .shop-icon { font-size:28px; min-width:40px; text-align:center; }
+  .shop-info { flex:1; }
+  .shop-name { color:#eee; font-size:14px; }
+  .shop-desc { color:#777; font-size:12px; margin-top:2px; }
+  .shop-price { color:var(--yellow); font-size:15px; white-space:nowrap; }
+
+  /* ──────── SCROLL ──────── */
+  ::-webkit-scrollbar { width:6px; }
+  ::-webkit-scrollbar-track { background:#111; }
+  ::-webkit-scrollbar-thumb { background:#443322; border-radius:3px; }
+
+  /* ──────── TOGGLE ──────── */
+  .toggle-row { display:flex; align-items:center; gap:12px; margin-bottom:12px; }
+  .toggle-row label { color:#bbb; font-size:13px; flex:1; }
+  .toggle-pair { display:flex; gap:4px; }
+  .tog-btn {
+    padding:6px 14px; border-radius:4px; border:1px solid #333;
+    background:rgba(30,30,30,0.8); color:#666; cursor:pointer; font-size:12px;
+    font-family:'Share Tech Mono',monospace; transition:all 0.15s;
+  }
+  .tog-btn.active { background:rgba(0,150,50,0.3); border-color:#00aa44; color:#00ff88; }
+
+  /* ──────── TAB ──────── */
+  .tab-bar { display:flex; gap:8px; margin-bottom:20px; }
+  .tab-btn {
+    padding:8px 20px; border-radius:6px; border:1px solid #333;
+    background:rgba(20,15,10,0.8); color:#777; cursor:pointer;
+    font-family:'Share Tech Mono',monospace; font-size:13px; transition:all 0.15s;
+  }
+  .tab-btn.active { border-color:var(--orange); color:var(--orange); background:rgba(60,30,0,0.5); }
+
+  /* ──────── GAME OVER / VICTORY ──────── */
+  #resultOverlay {
+    position:absolute; inset:0;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:18px; z-index:160; background:rgba(0,0,0,0.9);
+  }
+  #resultOverlay.hidden { display:none; }
+  .result-title { font-family:'Creepster',cursive; font-size:clamp(42px,8vw,80px); animation:glitch 2s infinite; }
+  @keyframes glitch {
+    0%,90%,100% { transform:none; text-shadow:none; }
+    92% { transform:translateX(-3px); text-shadow:3px 0 red; }
+    94% { transform:translateX(3px); text-shadow:-3px 0 cyan; }
+    96% { transform:none; }
+  }
+
+  /* ──────── NEWSPAPER ──────── */
+  #newspaperOverlay {
+    position:absolute; inset:0; background:rgba(0,0,0,0.92);
+    display:flex; align-items:center; justify-content:center; z-index:170;
+  }
+  #newspaperOverlay.hidden { display:none; }
+  .newspaper {
+    background: #f5e8c8;
+    border:3px solid #8B6914;
+    border-radius:6px;
+    padding:30px 36px;
+    max-width:600px; width:92%;
+    font-family:Georgia,serif; color:#1a1008;
+    box-shadow: 0 0 60px rgba(0,0,0,0.8);
+  }
+  .np-masthead { text-align:center; border-bottom:2px solid #8B6914; margin-bottom:16px; padding-bottom:10px; }
+  .np-name { font-size:28px; font-weight:bold; }
+  .np-date { font-size:11px; color:#6B4F12; }
+  .np-headline { font-size:20px; font-weight:bold; margin-bottom:12px; line-height:1.2; }
+  .np-body { font-size:13px; line-height:1.7; color:#2a1c08; }
+</style>
+</head>
+<body>
+
+<!-- CANVAS for game rendering -->
+<canvas id="gameCanvas" class="hidden"></canvas>
+
+<!-- NOTIFICATIONS -->
+<div id="notifContainer"></div>
+
+<!-- ACHIEVEMENT POPUP -->
+<div id="achPopup">
+  <div class="ach-icon" id="achIcon"></div>
+  <div>
+    <div class="ach-name" id="achName"></div>
+    <div class="ach-desc" id="achDesc"></div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════ MAIN MENU ════════════════════════════════════ -->
+<div id="menuScreen" class="screen">
+  <div class="menu-title">Five Nights at Illusha's</div>
+  <div class="menu-subtitle">в доме</div>
+  <div class="menu-stats">
+    <div class="stat-chip">💰 <span id="menuCoins">0</span> монет</div>
+    <div class="stat-chip">🌙 <span id="menuNights">0</span> ночей</div>
+    <div class="stat-chip">🏆 <span id="menuAchs">0/10</span></div>
+  </div>
+  <div class="menu-buttons">
+    <button class="btn primary" onclick="openDiffScreen()">▶ Играть</button>
+    <button class="btn" onclick="showScreen('diaryScreen')">📖 Дневник</button>
+    <button class="btn" onclick="openShop()">🛒 Магазин</button>
+    <button class="btn" onclick="showScreen('achScreen')">🏆 Достижения</button>
+    <button class="btn" onclick="showScreen('questScreen')">📋 Квесты</button>
+    <button class="btn" onclick="showLeader()">🏅 Рекорды</button>
+    <button class="btn" onclick="showScreen('settingsScreen')">⚙ Настройки</button>
+    <button class="btn" onclick="showScreen('controlsScreen')">🎮 Управление</button>
+  </div>
+</div>
+
+<!-- ════════════════════════════ DIFFICULTY SCREEN ════════════════════════════════════ -->
+<div id="diffScreen" class="screen hidden">
+  <div class="panel">
+    <h2>ВЫБЕРИ РЕЖИМ</h2>
+    <div class="tab-bar">
+      <button class="tab-btn active" onclick="setDiffTab('normal',this)">Сложность</button>
+      <button class="tab-btn" onclick="setDiffTab('special',this)">Спец. режимы</button>
+    </div>
+    <div id="diffNormal" class="diff-grid">
+      <div class="diff-card" style="border-color:#50c850;color:#50c850" onclick="startGame('easy',null)">
+        <div class="dc-label">ЛЕГКО</div>
+        <div class="dc-desc">Илья сонный, энергии хватает</div>
+        <div class="dc-bonus" style="color:#50c850">Монеты x1.0</div>
+      </div>
+      <div class="diff-card" style="border-color:#ffd700;color:#ffd700" onclick="startGame('normal',null)">
+        <div class="dc-label">НОРМАЛЬНО</div>
+        <div class="dc-desc">Стандартный режим</div>
+        <div class="dc-bonus" style="color:#ffd700">Монеты x1.5</div>
+      </div>
+      <div class="diff-card" style="border-color:#ff3c3c;color:#ff3c3c" onclick="startGame('hard',null)">
+        <div class="dc-label">ХАРДКОР</div>
+        <div class="dc-desc">Илья злой, всё ломается</div>
+        <div class="dc-bonus" style="color:#ff3c3c">Монеты x2.5</div>
+      </div>
+    </div>
+    <div id="diffSpecial" class="diff-grid hidden">
+      <div class="diff-card" style="border-color:#b464ff;color:#b464ff" onclick="startGame(null,'endless')">
+        <div class="dc-label">♾️ БЕСКОНЕЧНАЯ</div>
+        <div class="dc-desc">Играй до смерти. Таблица рекордов.</div>
+      </div>
+      <div class="diff-card" style="border-color:#00c8ff;color:#00c8ff" onclick="startGame(null,'speedrun')">
+        <div class="dc-label">⏱️ SPEEDRUN</div>
+        <div class="dc-desc">Ночь длится 3 минуты. Успей выжить!</div>
+      </div>
+      <div class="diff-card" style="border-color:#64ff96;color:#64ff96" onclick="startGame(null,'peaceful')">
+        <div class="dc-label">🕊️ МИРНЫЙ</div>
+        <div class="dc-desc">Никаких атак. Просто исследование.</div>
+      </div>
+      <div class="diff-card" style="border-color:#ff32c8;color:#ff32c8" onclick="startGame(null,'psychosis')">
+        <div class="dc-label">🌀 ПСИХОЗ</div>
+        <div class="dc-desc">Искажённая графика, галлюцинации...</div>
+      </div>
+    </div>
+    <br><button class="btn" onclick="showScreen('menuScreen')" style="width:100%;text-align:center">← Назад</button>
+  </div>
+</div>
+
+<!-- ════════════════════════════ SHOP SCREEN ════════════════════════════════════ -->
+<div id="shopScreen" class="screen hidden">
+  <div class="panel">
+    <h2>🛒 Магазин</h2>
+    <div style="color:var(--yellow);font-size:15px;margin-bottom:14px">💰 Монет: <span id="shopCoins">0</span></div>
+    <div class="tab-bar">
+      <button class="tab-btn active" onclick="setShopTab('upgrade',this)">Улучшения</button>
+      <button class="tab-btn" onclick="setShopTab('boost',this)">Бусты</button>
+      <button class="tab-btn" onclick="setShopTab('cosmetic',this)">Косметика</button>
+    </div>
+    <div id="shopItems"></div>
+    <br><button class="btn" onclick="showScreen('menuScreen');updateMenu()" style="width:100%;text-align:center">← Назад</button>
+  </div>
+</div>
+
+<!-- ════════════════════════════ ACHIEVEMENTS ════════════════════════════════════ -->
+<div id="achScreen" class="screen hidden">
+  <div class="panel">
+    <h2>🏆 Достижения</h2>
+    <div style="color:#aaa;font-size:13px;margin-bottom:16px;text-align:center">
+      Разблокировано: <span id="achCount">0</span> / <span id="achTotal">0</span>
+    </div>
+    <div id="achList"></div>
+    <br><button class="btn" onclick="showScreen('menuScreen')" style="width:100%;text-align:center">← Назад</button>
+  </div>
+</div>
+
+<!-- ════════════════════════════ QUESTS ════════════════════════════════════ -->
+<div id="questScreen" class="screen hidden">
+  <div class="panel">
+    <h2>📋 Квесты</h2>
+    <div id="questList"></div>
+    <br><button class="btn" onclick="showScreen('menuScreen')" style="width:100%;text-align:center">← Назад</button>
+  </div>
+</div>
+
+<!-- ════════════════════════════ DIARY ════════════════════════════════════ -->
+<div id="diaryScreen" class="screen hidden">
+  <div class="panel" style="max-width:640px">
+    <h2>📖 Дневник</h2>
+    <div style="background:rgba(20,12,5,0.9);border:1px solid #554422;border-radius:8px;padding:20px;min-height:200px">
+      <div id="diaryTitle" style="color:var(--yellow);font-size:18px;margin-bottom:14px"></div>
+      <div id="diaryText" style="color:#c8b48a;line-height:1.9;font-size:14px"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px">
+      <button class="btn" onclick="diaryPage(-1)" style="width:120px">◄ Пред</button>
+      <span id="diaryCounter" style="color:#776655;font-size:13px"></span>
+      <button class="btn" onclick="diaryPage(1)" style="width:120px">След ►</button>
+    </div>
+    <br><button class="btn" onclick="showScreen('menuScreen')" style="width:100%;text-align:center">Закрыть</button>
+  </div>
+</div>
+
+<!-- ════════════════════════════ LEADERBOARD ════════════════════════════════════ -->
+<div id="leaderScreen" class="screen hidden">
+  <div class="panel" style="max-width:540px">
+    <h2>🏅 Таблица рекордов</h2>
+    <div style="color:#7070aa;font-size:12px;text-align:center;margin-bottom:14px">Бесконечная ночь — топ выживших</div>
+    <div id="leaderList"></div>
+    <br><button class="btn" onclick="showScreen('menuScreen')" style="width:100%;text-align:center">← Назад</button>
+  </div>
+</div>
+
+<!-- ════════════════════════════ SETTINGS ════════════════════════════════════ -->
+<div id="settingsScreen" class="screen hidden">
+  <div class="panel">
+    <h2>⚙ Настройки</h2>
+    <div class="toggle-row">
+      <label>🔊 Громкость</label>
+      <input type="range" id="volRange" min="0" max="100" value="50" oninput="setVolume(this.value)">
+      <span id="volVal" style="color:var(--green);font-size:13px;min-width:36px">50%</span>
+    </div>
+    <div class="toggle-row">
+      <label>💥 Тряска экрана</label>
+      <div class="toggle-pair">
+        <button class="tog-btn active" id="shakOn" onclick="setSetting('shakeEnabled',true)">ВКЛ</button>
+        <button class="tog-btn" id="shakOff" onclick="setSetting('shakeEnabled',false)">ВЫКЛ</button>
+      </div>
+    </div>
+    <div class="toggle-row">
+      <label>📊 Показ FPS</label>
+      <div class="toggle-pair">
+        <button class="tog-btn" id="fpsOn" onclick="setSetting('showFps',true)">ВКЛ</button>
+        <button class="tog-btn active" id="fpsOff" onclick="setSetting('showFps',false)">ВЫКЛ</button>
+      </div>
+    </div>
+    <div class="toggle-row">
+      <label>🍀 Рандом Артёма</label>
+      <div class="toggle-pair">
+        <button class="tog-btn active" id="luckOn" onclick="setSetting('artemLuck',true)">ВКЛ</button>
+        <button class="tog-btn" id="luckOff" onclick="setSetting('artemLuck',false)">ВЫКЛ</button>
+      </div>
+    </div>
+    <div class="toggle-row">
+      <label>👁 Режим дальтоника</label>
+      <div class="toggle-pair">
+        <button class="tog-btn" id="cbOn" onclick="setSetting('colorblind',true)">ВКЛ</button>
+        <button class="tog-btn active" id="cbOff" onclick="setSetting('colorblind',false)">ВЫКЛ</button>
+      </div>
+    </div>
+    <div class="toggle-row">
+      <label>🕐 Формат часов</label>
+      <div class="toggle-pair">
+        <button class="tog-btn active" id="clk24" onclick="setSetting('clockStyle','24h')">24ч</button>
+        <button class="tog-btn" id="clk12" onclick="setSetting('clockStyle','12h')">12ч</button>
+      </div>
+    </div>
+    <hr style="border-color:#221100;margin:16px 0">
+    <button class="btn danger" id="resetBtn" onclick="confirmReset()" style="width:100%;text-align:center">🗑 Сбросить прогресс</button>
+    <br><button class="btn" onclick="saveSettings();showScreen('menuScreen')" style="width:100%;text-align:center">← Назад</button>
+  </div>
+</div>
+
+<!-- ════════════════════════════ CONTROLS ════════════════════════════════════ -->
+<div id="controlsScreen" class="screen hidden">
+  <div class="panel" style="max-width:520px">
+    <h2>🎮 Управление</h2>
+    <div style="display:grid;grid-template-columns:auto 1fr;gap:10px 20px;align-items:start">
+      <span style="color:var(--yellow);font-family:'Creepster',cursive;font-size:18px">ПРОБЕЛ</span><span style="color:#ccc">Открыть/закрыть камеры</span>
+      <span style="color:var(--yellow);font-family:'Creepster',cursive;font-size:18px">D</span><span style="color:#ccc">Закрыть/открыть дверь</span>
+      <span style="color:var(--yellow);font-family:'Creepster',cursive;font-size:18px">R (зажать)</span><span style="color:#ccc">Включить фонарик</span>
+      <span style="color:var(--yellow);font-family:'Creepster',cursive;font-size:18px">← ВЛЕВО</span><span style="color:#ccc">Переключить комнату</span>
+      <span style="color:var(--yellow);font-family:'Creepster',cursive;font-size:18px">W</span><span style="color:#ccc">Использовать домофон</span>
+      <span style="color:var(--yellow);font-family:'Creepster',cursive;font-size:18px">1 / 2 / 3</span><span style="color:#ccc">Ответить на звонок</span>
+      <span style="color:var(--yellow);font-family:'Creepster',cursive;font-size:18px">ESC</span><span style="color:#ccc">Пауза</span>
+      <span style="color:var(--yellow);font-family:'Creepster',cursive;font-size:18px">ПРОБЕЛ / ЛКМ</span><span style="color:#ccc">Мини-игра: остановить Илью</span>
+      <span style="color:var(--yellow);font-family:'Creepster',cursive;font-size:18px">1–5 (камера)</span><span style="color:#ccc">Переключить камеру</span>
+    </div>
+    <br><button class="btn" onclick="showScreen('menuScreen')" style="width:100%;text-align:center">← Назад</button>
+  </div>
+</div>
+
+<!-- ════════════════════════════ MINIGAME OVERLAY ════════════════════════════════════ -->
+<div id="minigameOverlay" class="hidden">
+  <div class="mg-title">!! ИЛЬЯ ЛОМАЕТ КАМЕРУ !!</div>
+  <div style="color:#bbb;font-size:16px">Нажми <b>ПРОБЕЛ</b> или кликни мышкой, когда курсор в зелёной зоне</div>
+  <div class="mg-attempts" id="mgAttempts">Попыток: 3</div>
+  <div class="mg-bar-wrap">
+    <div class="mg-bar-bg"></div>
+    <div class="mg-zone" id="mgZone"></div>
+    <div class="mg-cursor" id="mgCursor"></div>
+  </div>
+</div>
+
+<!-- ════════════════════════════ INTERCOM OVERLAY ════════════════════════════════════ -->
+<div id="intercomOverlay" class="hidden">
+  <div class="ic-timer">⏱ <span id="icTimer">14</span>с</div>
+  <div class="ic-greeting" id="icGreeting"></div>
+  <div class="ic-options" id="icOptions"></div>
+</div>
+
+<!-- ════════════════════════════ PAUSE OVERLAY ════════════════════════════════════ -->
+<div id="pauseOverlay" class="hidden">
+  <div class="pause-title">⏸ ПАУЗА</div>
+  <div class="vol-wrap">
+    <label>Громкость</label>
+    <input type="range" id="pauseVol" min="0" max="100" value="50" oninput="setVolume(this.value)">
+    <span id="pauseVolVal" style="color:var(--green);font-size:13px;min-width:36px">50%</span>
+  </div>
+  <button class="btn green-btn" onclick="resumeGame()" style="width:200px;text-align:center">▶ Продолжить</button>
+</div>
+
+<!-- ════════════════════════════ RESULT OVERLAY ════════════════════════════════════ -->
+<div id="resultOverlay" class="hidden">
+  <div class="result-title" id="resultTitle"></div>
+  <div id="resultText" style="color:#aaa;font-size:16px;text-align:center;max-width:500px;line-height:1.8"></div>
+  <button class="btn primary" onclick="endResult()" style="width:220px;text-align:center;font-size:18px">← Главное меню</button>
+</div>
+
+<!-- ════════════════════════════ NEWSPAPER ════════════════════════════════════ -->
+<div id="newspaperOverlay" class="hidden">
+  <div class="newspaper">
+    <div class="np-masthead">
+      <div class="np-name">НОЧНОЙ ВЕСТНИК</div>
+      <div class="np-date" id="npDate"></div>
+    </div>
+    <div class="np-headline" id="npHeadline"></div>
+    <div class="np-body" id="npBody"></div>
+    <br>
+    <button class="btn" onclick="closeNewspaper()" style="width:100%;text-align:center;font-family:Georgia,serif;color:#4a2c00;border-color:#8B6914;background:#e8d4a0">Закрыть →</button>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════════════
+// DATA
+// ══════════════════════════════════════════════════════════════════════
+const ACHIEVEMENTS = [
+  { id:'first_survivor',  name:'Первый выживший',  desc:'Пережить первую ночь',               icon:'🏆' },
+  { id:'economist',       name:'Экономный',         desc:'Закончить ночь с 50%+ энергии',       icon:'⚡' },
+  { id:'iron_nerves',     name:'Железные нервы',    desc:'Не использовать фонарь всю ночь',     icon:'🔦' },
+  { id:'collector',       name:'Коллекционер',      desc:'Купить все предметы в магазине',       icon:'🛒' },
+  { id:'hardcorer',       name:'Хардкорщик',        desc:'Пройти 5 ночей на хардкоре',           icon:'💀' },
+  { id:'no_door_3_nights',name:'Без двери',         desc:'Выжить 3 ночи без использования двери',icon:'🚪' },
+  { id:'energy_saver',    name:'Зелёный',           desc:'Потратить меньше 30% энергии за ночь', icon:'🌱' },
+  { id:'no_intercom_5',   name:'Игнор',             desc:'Не открывать домофон 5 раз подряд',    icon:'🔕' },
+  { id:'endless_10',      name:'Бесконечник',       desc:'Выжить 10 ночей в режиме Бесконечной', icon:'♾️' },
+  { id:'speedrunner',     name:'Спидраннер',        desc:'Пережить спидран-ночь',                 icon:'⏱️' },
+];
+
+const QUESTS = [
+  { id:'quest_no_door_3',    name:'Выживи 3 ночи без двери',    desc:'Пережить 3 ночи не закрывая дверь',         reward:60,  icon:'🚪', maxProg:3 },
+  { id:'quest_energy_30',    name:'Экономия энергии',           desc:'Потратить меньше 30% энергии за одну ночь', reward:40,  icon:'⚡', maxProg:1 },
+  { id:'quest_no_intercom_5',name:'Молчание домофона',          desc:'Не открывать домофон 5 раз подряд',         reward:35,  icon:'🔕', maxProg:5 },
+];
+
+const SHOP_ITEMS = [
+  { id:'slow_animatronic',  name:'Снотворное для Ильи',  desc:'Илья движется медленнее на 30%',   price:30, icon:'💤', cat:'upgrade' },
+  { id:'extra_energy',      name:'Генератор',             desc:'+25% начальной энергии',            price:25, icon:'🔋', cat:'upgrade' },
+  { id:'armor',             name:'Бронежилет',            desc:'Выживаешь после одной атаки',       price:50, icon:'🛡', cat:'upgrade' },
+  { id:'doorbell_delay',    name:'Глушилка',              desc:'Артем звонит реже',                 price:20, icon:'📵', cat:'upgrade' },
+  { id:'slow_animatronic_2',name:'Снотворное МАКС',       desc:'Илья движется медленнее на 55%',   price:60, icon:'💤', cat:'upgrade', requires:'slow_animatronic' },
+  { id:'extra_energy_2',    name:'Мега-Генератор',        desc:'+50% начальной энергии',            price:50, icon:'⚡', cat:'upgrade', requires:'extra_energy' },
+  { id:'boost_energy',      name:'Энергетик',             desc:'Расход энергии -50% одну ночь',    price:15, icon:'⚡', cat:'boost' },
+  { id:'boost_speed',       name:'Замедление времени',    desc:'Илья замедлен на одну ночь',       price:20, icon:'🕒', cat:'boost' },
+  { id:'skin_red_door',     name:'Красная дверь',         desc:'Иконка двери становится красной',  price:10, icon:'🔴', cat:'cosmetic' },
+  { id:'skin_neon_ui',      name:'Неоновый интерфейс',    desc:'UI подсвечивается неоном',         price:15, icon:'✨', cat:'cosmetic' },
+];
+
+const DIFFICULTIES = {
+  easy:   { label:'ЛЕГКО',     color:'#50c850', moveDelayMult:1.5,  energyDrainMult:0.7,  doorOverheatTime:40, breakdownChance:0.0003, coinBonus:1.0 },
+  normal: { label:'НОРМАЛЬНО', color:'#ffd700', moveDelayMult:1.0,  energyDrainMult:1.0,  doorOverheatTime:25, breakdownChance:0.0006, coinBonus:1.5 },
+  hard:   { label:'ХАРДКОР',   color:'#ff3c3c', moveDelayMult:0.65, energyDrainMult:1.5,  doorOverheatTime:12, breakdownChance:0.0015, coinBonus:2.5 },
+};
+
+const ARTEM_SCENARIOS = [
+  { id:'bun', greeting:'Артём: Егор, открой. Мне нужна булочка.',
+    options:[
+      { key:'1', text:'1. Нет, иди нахуй', result:'death', cost:0 },
+      { key:'2', text:'2. Попозже', result:'later', cost:0 },
+      { key:'3', text:'3. Купить булочку (-15)', result:'success', cost:15,
+        luck:[{chance:.4,bonus:10,text:'Артём: сдачу держи! Спасибо!'},{chance:.4,bonus:0,text:'Артём доволен и уходит.'},{chance:.2,bonus:-5,text:'Артём: она чёрствая... Требую скидку.'}] },
+    ]},
+  { id:'pizza', greeting:'Артём: Егор! Я заказал пиццу, а курьер не нашёл. Дай адрес!',
+    options:[
+      { key:'1', text:'1. Сам разбирайся', result:'death', cost:0 },
+      { key:'2', text:'2. Пришли ссылку позже', result:'later', cost:0 },
+      { key:'3', text:'3. Помочь с адресом (0 монет)', result:'success', cost:0,
+        luck:[{chance:.5,bonus:15,text:'Артём: курьер нашёл! Держи за помощь!'},{chance:.3,bonus:0,text:'Артём: нашли! Спасибо!'},{chance:.2,bonus:-8,text:'Артём: курьер всё равно заблудился. Позор.'}] },
+    ]},
+  { id:'money', greeting:'Артём: Егор, займи 20 монет до завтра. Клянусь верну!',
+    options:[
+      { key:'1', text:'1. Не дам', result:'death', cost:0 },
+      { key:'2', text:'2. Завтра поговорим', result:'later', cost:0 },
+      { key:'3', text:'3. Занять 20 монет (-20)', result:'success', cost:20,
+        luck:[{chance:.3,bonus:40,text:'Артём: я вернул с процентами! Вот 40!'},{chance:.4,bonus:0,text:'Артём: я обязательно верну. Наверное.'},{chance:.3,bonus:-10,text:'Артём: я потратил... но я верну!'}] },
+    ]},
+  { id:'noise', greeting:'Артём: ТЫ СЛЫШИШЬ?! У тебя там что-то грохочет! Открой, проверим!',
+    options:[
+      { key:'1', text:'1. Это не я', result:'death', cost:0 },
+      { key:'2', text:'2. Всё нормально, иди', result:'later', cost:0 },
+      { key:'3', text:'3. Откупиться (-10)', result:'success', cost:10,
+        luck:[{chance:.5,bonus:5,text:'Артём: ладно, прости. Держи.'},{chance:.3,bonus:0,text:'Артём: ладно... ухожу.'},{chance:.2,bonus:-5,text:'Артём: и ещё за моральный ущерб!'}] },
+    ]},
+  { id:'cat', greeting:'Артём: Егор! Ты не видел Мурзика? Потерялся! Серый, пушистый...',
+    options:[
+      { key:'1', text:'1. Нет и знать не хочу', result:'death', cost:0 },
+      { key:'2', text:'2. Не видел, прости', result:'later', cost:0 },
+      { key:'3', text:'3. Помочь искать (0 монет)', result:'success', cost:0,
+        luck:[{chance:.5,bonus:20,text:'Артём: НАШЛИ!! Держи награду!'},{chance:.3,bonus:5,text:'Артём: нашли за батареей. Спасибо!'},{chance:.2,bonus:-5,text:'Артём: не нашли... ты наступил на хвост!'}] },
+    ]},
+];
+
+const DIARY_ENTRIES = [
+  { title:'Запись #1 — Первая ночь', text:['Я согласился посидеть за домом у Ильи на одну ночь.','Он сказал: "Просто следи за камерами и не открывай дверь."','Я думал, это будет легко. Я ошибался.','Илья вернулся через час. Он смотрел на меня из камеры 4.','Просто стоял. И смотрел.'] },
+  { title:'Запись #2 — Артем', text:['Сегодня в дверь позвонил Артем. Он хотел булочку.','Я не дал. Он очень расстроился.','Следующие два часа он просто звонил каждые полчаса.','Я начинаю думать, что они заодно.','Надо купить булочек заранее.'] },
+  { title:'Запись #3 — Свет', text:['Ночью вырубился свет. На три минуты.','Когда он вернулся — Илья был уже в коридоре.','Я успел закрыть дверь за секунду до того, как...','В общем, дверь держит. Пока держит.','Генератор надо починить.'] },
+  { title:'Запись #4 — Камеры', text:['Илья научился смотреть в камеру и делать страшное лицо.','Это нервирует. Очень.','Иногда камера 3 просто отключается сама по себе.','Я не знаю что там происходит когда она не работает.','И знать не хочу.'] },
+  { title:'Запись #5 — Налоги', text:['Илья сказал что я должен ему налоги.','Я не понимаю за что именно.','Он объяснить не смог — просто повторял "налоги, налоги".','Артем в фоне кричал что-то про булочку.','Это сумасшедший дом.'] },
+];
+
+const NEWSPAPERS = [
+  { night:1, headline:'МЕСТНЫЙ ДОМ ОХРАНЯЕТСЯ ПОДОЗРИТЕЛЬНЫМ ЖИЛЬЦОМ', text:'По свидетельствам соседей, прошлой ночью из дома №14 доносились странные звуки. Охранник дома Егор Т. отказался комментировать произошедшее, лишь произнеся: "Я выжил." Илья К. был замечен возле дома в 3 часа ночи.' },
+  { night:2, headline:'ТРЕВОЖНАЯ СТАТИСТИКА: РОСТ ПОТРЕБЛЕНИЯ БУЛОЧЕК', text:'Местная пекарня сообщает о резком росте спроса на булочки в ночное время. Артем В. заявил: "Мне просто нужна булочка. Это всё, что я прошу." Полиция рекомендует держать дверь закрытой.' },
+  { night:3, headline:'ЭНЕРГЕТИЧЕСКИЙ КРИЗИС В РАЙОНЕ', text:'Жители жалуются на нестабильное электроснабжение. По данным ЖКХ, причина — несанкционированное подключение к сети. Сторож Егор Т. приобрёл резервную систему питания. Ситуация остаётся напряжённой.' },
+  { night:4, headline:'ИЛЬЯ ВЫДВИНУЛ ТРЕБОВАНИЯ', text:'Представитель налоговой инспекции Илья К. официально потребовал уплаты налогов за "пользование коридором". Юристы называют требование незаконным. Тем не менее Илья продолжает патрулировать дом по ночам.' },
+  { night:5, headline:'ТАИНСТВЕННАЯ КОНЦОВКА ИСТОРИИ НОЧНОГО СТОРОЖА', text:'Спустя пять ночей дежурства Егор Т. наконец вышел на свет. Его лицо было бледным, но он улыбался. На вопрос "Что произошло?" он ответил: "Я всё знаю про Илью. И про булочки." Подробности следствие засекретило.' },
+];
+
+// ══════════════════════════════════════════════════════════════════════
+// SAVE / LOAD
+// ══════════════════════════════════════════════════════════════════════
+let save = {
+  coins: 0, ownedItems: [], nightsSurvived: 0,
+  achievements: [], endlessHighscore: 0, hardcoreNights: 0,
+  leaderboard: [], questProgress: {}, completedQuests: [],
+};
+let settings = {
+  volume: 50, shakeEnabled: true, showFps: false,
+  artemLuck: true, colorblind: false, clockStyle: '24h',
+};
+
+function loadAll() {
+  try {
+    const s = localStorage.getItem('fnai_save');
+    if (s) save = { ...save, ...JSON.parse(s) };
+    const st = localStorage.getItem('fnai_settings');
+    if (st) settings = { ...settings, ...JSON.parse(st) };
+  } catch(e) {}
+}
+function saveAll() {
+  try {
+    localStorage.setItem('fnai_save', JSON.stringify(save));
+    localStorage.setItem('fnai_settings', JSON.stringify(settings));
+  } catch(e) {}
+}
+loadAll();
+
+// ══════════════════════════════════════════════════════════════════════
+// SCREEN NAVIGATION
+// ══════════════════════════════════════════════════════════════════════
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => {
+    s.classList.toggle('hidden', s.id !== id);
+  });
+  if (id === 'achScreen') renderAchievements();
+  if (id === 'questScreen') renderQuests();
+  if (id === 'diaryScreen') renderDiary();
+  if (id === 'settingsScreen') renderSettings();
+}
+
+function updateMenu() {
+  document.getElementById('menuCoins').textContent = save.coins;
+  document.getElementById('menuNights').textContent = save.nightsSurvived;
+  document.getElementById('menuAchs').textContent = `${save.achievements.length}/${ACHIEVEMENTS.length}`;
+}
+updateMenu();
+
+// ══════════════════════════════════════════════════════════════════════
+// DIARY
+// ══════════════════════════════════════════════════════════════════════
+let diaryIdx = 0;
+function renderDiary() {
+  const e = DIARY_ENTRIES[diaryIdx];
+  document.getElementById('diaryTitle').textContent = e.title;
+  document.getElementById('diaryText').innerHTML = e.text.map(l => `<p>${l}</p>`).join('');
+  document.getElementById('diaryCounter').textContent = `${diaryIdx+1} / ${DIARY_ENTRIES.length}`;
+}
+function diaryPage(d) {
+  diaryIdx = (diaryIdx + d + DIARY_ENTRIES.length) % DIARY_ENTRIES.length;
+  renderDiary();
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// SETTINGS
+// ══════════════════════════════════════════════════════════════════════
+function renderSettings() {
+  document.getElementById('volRange').value = settings.volume;
+  document.getElementById('volVal').textContent = settings.volume + '%';
+  applyToggle('shakeEnabled','shakOn','shakOff');
+  applyToggle('showFps','fpsOn','fpsOff');
+  applyToggle('artemLuck','luckOn','luckOff');
+  applyToggle('colorblind','cbOn','cbOff');
+  // clock
+  document.getElementById('clk24').classList.toggle('active', settings.clockStyle==='24h');
+  document.getElementById('clk12').classList.toggle('active', settings.clockStyle==='12h');
+}
+function applyToggle(key, onId, offId) {
+  document.getElementById(onId).classList.toggle('active', !!settings[key]);
+  document.getElementById(offId).classList.toggle('active', !settings[key]);
+}
+function setVolume(v) {
+  settings.volume = +v;
+  document.getElementById('volVal').textContent = v + '%';
+  const pv = document.getElementById('pauseVolVal');
+  if (pv) { pv.textContent = v+'%'; document.getElementById('pauseVol').value = v; }
+}
+function setSetting(key, val) {
+  settings[key] = val;
+  renderSettings();
+}
+function saveSettings() { saveAll(); }
+let resetConfirm = false;
+function confirmReset() {
+  if (!resetConfirm) {
+    resetConfirm = true;
+    document.getElementById('resetBtn').textContent = '⚠ ПОДТВЕРДИТЬ СБРОС?';
+    document.getElementById('resetBtn').style.background = 'rgba(120,0,0,0.6)';
+    setTimeout(() => { resetConfirm = false; document.getElementById('resetBtn').textContent = '🗑 Сбросить прогресс'; document.getElementById('resetBtn').style.background = ''; }, 3000);
+  } else {
+    save.coins = 0; save.ownedItems = []; save.nightsSurvived = 0;
+    save.achievements = []; save.endlessHighscore = 0; save.hardcoreNights = 0;
+    save.leaderboard = []; save.questProgress = {}; save.completedQuests = [];
+    saveAll(); updateMenu(); resetConfirm = false;
+    document.getElementById('resetBtn').textContent = '🗑 Сбросить прогресс';
+    notify('Прогресс сброшен', '#ff5555', 2);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// ACHIEVEMENTS
+// ══════════════════════════════════════════════════════════════════════
+function renderAchievements() {
+  const list = document.getElementById('achList');
+  document.getElementById('achCount').textContent = save.achievements.length;
+  document.getElementById('achTotal').textContent = ACHIEVEMENTS.length;
+  list.innerHTML = ACHIEVEMENTS.map(a => {
+    const u = save.achievements.includes(a.id);
+    return `<div class="card ${u?'unlocked':''}">
+      <span style="font-size:22px">${u ? a.icon : '🔒'}</span>
+      <span style="color:${u?'#ffd700':'#555'};margin-left:12px;font-size:14px">${a.name}</span>
+      <span style="color:#666;margin-left:10px;font-size:12px">${u ? a.desc : '???'}</span>
+    </div>`;
+  }).join('');
+}
+
+function unlockAchievement(id) {
+  if (!save.achievements.includes(id)) {
+    save.achievements.push(id);
+    saveAll();
+    showAchievementPopup(id);
+    return true;
+  }
+  return false;
+}
+
+function showAchievementPopup(id) {
+  const a = ACHIEVEMENTS.find(x => x.id === id);
+  if (!a) return;
+  playSound('achievement', 0.6);
+  document.getElementById('achIcon').textContent = a.icon;
+  document.getElementById('achName').textContent = 'ДОСТИЖЕНИЕ: ' + a.name;
+  document.getElementById('achDesc').textContent = a.desc;
+  const popup = document.getElementById('achPopup');
+  popup.classList.add('show');
+  setTimeout(() => popup.classList.remove('show'), 3500);
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// QUESTS
+// ══════════════════════════════════════════════════════════════════════
+function renderQuests() {
+  const list = document.getElementById('questList');
+  list.innerHTML = QUESTS.map(q => {
+    const done = save.completedQuests.includes(q.id);
+    const prog = save.questProgress[q.id] || 0;
+    const progText = q.maxProg > 1 ? `${Math.min(prog,q.maxProg)}/${q.maxProg}` : (done ? '✓' : '—');
+    return `<div class="card ${done?'unlocked':''}">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:22px">${q.icon}</span>
+        <div style="flex:1;margin:0 12px">
+          <div style="color:${done?'#00ff88':'#cce'};font-size:14px">${q.name}</div>
+          <div style="color:#666;font-size:12px;margin-top:3px">${q.desc}</div>
+          <div style="color:var(--yellow);font-size:11px;margin-top:3px">Награда: +${q.reward} монет</div>
+        </div>
+        <div style="color:${done?'#00ff88':'#88aacc'};font-size:13px;white-space:nowrap">${done?'✓ ВЫПОЛНЕНО':'Прогресс: '+progText}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// SHOP
+// ══════════════════════════════════════════════════════════════════════
+let currentShopTab = 'upgrade';
+
+function openShop() {
+  showScreen('shopScreen');
+  renderShop();
+}
+function setShopTab(tab, btn) {
+  currentShopTab = tab;
+  document.querySelectorAll('#shopScreen .tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderShop();
+}
+function renderShop() {
+  document.getElementById('shopCoins').textContent = save.coins;
+  const items = SHOP_ITEMS.filter(i => i.cat === currentShopTab);
+  document.getElementById('shopItems').innerHTML = items.map(item => {
+    const owned = save.ownedItems.includes(item.id);
+    const locked = item.requires && !save.ownedItems.includes(item.requires);
+    const canAfford = save.coins >= item.price;
+    return `<div class="shop-item ${owned?'owned':''} ${(!canAfford&&!owned)?'cant-afford':''}">
+      <div class="shop-icon">${item.icon}</div>
+      <div class="shop-info">
+        <div class="shop-name">${item.name}</div>
+        <div class="shop-desc">${item.desc}${locked?' [Требует: предыдущий уровень]':''}</div>
+      </div>
+      <div>
+        ${owned ? '<span style="color:#00ff88;font-size:13px">✓ Куплено</span>'
+          : locked ? '<span style="color:#555;font-size:13px">🔒 Заблокировано</span>'
+          : `<div class="shop-price">💰 ${item.price}</div>
+             <button class="btn" style="margin-top:6px;font-size:12px;padding:6px 12px;${!canAfford?'opacity:.4;cursor:not-allowed':''}" onclick="buyItem('${item.id}')" ${!canAfford?'disabled':''}>Купить</button>`}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function buyItem(id) {
+  const item = SHOP_ITEMS.find(i => i.id === id);
+  if (!item || save.ownedItems.includes(id) || save.coins < item.price) return;
+  if (item.requires && !save.ownedItems.includes(item.requires)) return;
+  save.coins -= item.price;
+  save.ownedItems.push(id);
+  saveAll();
+  renderShop();
+  // Check collector achievement
+  const upgrades = SHOP_ITEMS.filter(i => i.cat === 'upgrade');
+  if (upgrades.every(u => save.ownedItems.includes(u.id))) unlockAchievement('collector');
+  notify(`Куплено: ${item.name}`, '#ffd700', 2);
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// LEADERBOARD
+// ══════════════════════════════════════════════════════════════════════
+function showLeader() {
+  showScreen('leaderScreen');
+  const lb = save.leaderboard || [];
+  const medals = ['🥇','🥈','🥉'];
+  document.getElementById('leaderList').innerHTML = lb.length === 0
+    ? '<div style="color:#555;text-align:center;padding:20px">Рекордов пока нет...</div>'
+    : lb.slice(0,10).map((e,i) => `<div style="display:flex;align-items:center;gap:16px;padding:10px;border-bottom:1px solid #221100">
+        <span style="font-size:20px;min-width:30px">${medals[i]||'  '}</span>
+        <span style="color:#ffd700;font-size:16px">#${i+1}</span>
+        <span style="color:#ccc;flex:1">Ночей: ${e.nights}</span>
+        <span style="color:#555;font-size:12px">${e.date||''}</span>
+      </div>`).join('');
+}
+
+function addToLeaderboard(nights) {
+  if (!save.leaderboard) save.leaderboard = [];
+  save.leaderboard.push({ nights, date: new Date().toLocaleDateString('ru') });
+  save.leaderboard.sort((a,b) => b.nights - a.nights);
+  if (save.leaderboard.length > 10) save.leaderboard.length = 10;
+  if (nights > (save.endlessHighscore||0)) save.endlessHighscore = nights;
+  saveAll();
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// DIFFICULTY NAV
+// ══════════════════════════════════════════════════════════════════════
+let diffTab = 'normal';
+function openDiffScreen() { showScreen('diffScreen'); }
+function setDiffTab(tab, btn) {
+  diffTab = tab;
+  document.querySelectorAll('#diffScreen .tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('diffNormal').classList.toggle('hidden', tab !== 'normal');
+  document.getElementById('diffSpecial').classList.toggle('hidden', tab !== 'special');
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// NOTIFICATIONS
+// ══════════════════════════════════════════════════════════════════════
+function notify(text, color='#ffd700', duration=3) {
+  const el = document.createElement('div');
+  el.className = 'notif';
+  el.style.color = color;
+  el.textContent = text;
+  document.getElementById('notifContainer').appendChild(el);
+  setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity .4s'; setTimeout(()=>el.remove(),400); }, duration*1000);
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// NEWSPAPER
+// ══════════════════════════════════════════════════════════════════════
+let npCallback = null;
+function showNewspaper(nightNum, cb) {
+  const np = NEWSPAPERS.find(n => n.night === nightNum);
+  if (!np) { if (cb) cb(); return; }
+  npCallback = cb;
+  playSound('newspaper', 0.5);
+  document.getElementById('npDate').textContent = new Date().toLocaleDateString('ru');
+  document.getElementById('npHeadline').textContent = np.headline;
+  document.getElementById('npBody').textContent = np.text;
+  // Устанавливаем фон газеты если есть картинка
+  const npImg = IMG['newspaper'];
+  const overlay = document.getElementById('newspaperOverlay');
+  if (npImg && npImg.complete && npImg.naturalWidth > 0) {
+    overlay.style.backgroundImage = `url(${npImg.src})`;
+    overlay.style.backgroundSize = 'cover';
+    overlay.style.backgroundPosition = 'center';
+  }
+  overlay.classList.remove('hidden');
+}
+function closeNewspaper() {
+  document.getElementById('newspaperOverlay').classList.add('hidden');
+  if (npCallback) { npCallback(); npCallback = null; }
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// RESULT SCREEN
+// ══════════════════════════════════════════════════════════════════════
+function showResult(title, color, lines, onDone) {
+  const el = document.getElementById('resultOverlay');
+  el.classList.remove('hidden');
+  document.getElementById('resultTitle').textContent = title;
+  document.getElementById('resultTitle').style.color = color;
+  document.getElementById('resultText').innerHTML = lines.map(l=>`<div>${l}</div>`).join('');
+  window._resultDone = onDone;
+}
+function endResult() {
+  document.getElementById('resultOverlay').classList.add('hidden');
+  if (window._resultDone) window._resultDone();
+  showScreen('menuScreen');
+  updateMenu();
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// ASSET LOADER
+// ══════════════════════════════════════════════════════════════════════
+// Базовый путь к ресурсам — ИЗМЕНИ НА СВОЙ GitHub Pages URL если нужно
+// Например: const ASSET_BASE = 'https://username.github.io/repo-name/';
+// Если index.html лежит в корне репозитория — оставь пустую строку:
+const ASSET_BASE = '';
+
+const IMG = {};
+const SND = {};
+let assetsLoaded = false;
+let loadProgress = 0;
+
+const IMAGE_FILES = {
+  background:       'images/фон_игры.jpg',
+  office_open:      'images/office_open.png',
+  office_closed:    'images/office_closed.png',
+  office_light:     'images/office_light.png',
+  office_light_hallway: 'images/office_light_hallway.png',
+  office_light_closed:  'images/office_light_closed.png',
+  office_safe:      'images/office_safe.png',
+  office_leftroom:  'images/office_leftroom.png',
+  animatronic_attack: 'images/animatronic_attack.png',
+  intercom_empty:   'images/intercom_empty.png',
+  intercom_anim:    'images/intercom_animatronic.png',
+  screamer_intercom: 'images/screamer_intercom.png',
+  victory:          'images/victory.jpg',
+  game_over:        'images/game_over.jpg',
+  newspaper:        'images/newspaper.png',
+  achievement_banner: 'images/achievement_banner.png',
+  camera_map:       'images/cameramap.png',
+  camera_anim:      'images/camera_animatronic.png',
+  camera_1:         'images/camera_1.png',
+  camera_2:         'images/camera_2.png',
+  camera_3:         'images/camera_3.png',
+  camera_4:         'images/camera_4.png',
+  camera_5:         'images/camera_5.png',
+};
+
+const SOUND_FILES = {
+  camera_open:    'sounds/camera_open.mp3',
+  camera_switch:  'sounds/camera_switch.mp3',
+  door_close:     'sounds/door_close.mp3',
+  door_open:      'sounds/door_open.mp3',
+  office_ambience:'sounds/office_ambience.mp3',
+  random_event:   'sounds/random_event.mp3',
+  go_gylat:       'sounds/go_gylat.mp3',
+  attack:         'sounds/die.mp3',
+  victory:        'sounds/victory.mp3',
+  game_over:      'sounds/lose.mp3',
+  doorbell:       'sounds/doorbell.mp3',
+  attack2:        'sounds/die_2.mp3',
+  achievement:    'sounds/achievement.mp3',
+  newspaper:      'sounds/newspaper.mp3',
+};
+
+function loadAssets(onDone) {
+  const imgKeys  = Object.keys(IMAGE_FILES);
+  const sndKeys  = Object.keys(SOUND_FILES);
+  const total    = imgKeys.length + sndKeys.length;
+  let  loaded    = 0;
+
+  function tick() {
+    loaded++;
+    loadProgress = Math.floor(loaded / total * 100);
+    if (loaded >= total) { assetsLoaded = true; onDone(); }
+  }
+
+  imgKeys.forEach(key => {
+    const img = new Image();
+    img.onload  = tick;
+    img.onerror = tick; // продолжаем даже если файл не найден
+    img.src = ASSET_BASE + IMAGE_FILES[key];
+    IMG[key] = img;
+  });
+
+  sndKeys.forEach(key => {
+    const audio = new Audio(ASSET_BASE + SOUND_FILES[key]);
+    audio.preload = 'auto';
+    audio.addEventListener('canplaythrough', tick, { once: true });
+    audio.addEventListener('error', tick, { once: true });
+    SND[key] = audio;
+  });
+}
+
+// Вспомогательная функция воспроизведения звука
+function playSound(key, volume, loop) {
+  const snd = SND[key];
+  if (!snd) return null;
+  try {
+    const clone = snd.cloneNode();
+    clone.volume = Math.min(1, Math.max(0, (volume !== undefined ? volume : settings.volume / 100)));
+    if (loop) clone.loop = true;
+    clone.play().catch(()=>{});
+    return clone;
+  } catch(e) { return null; }
+}
+
+// Фоновая музыка офиса
+let _ambienceNode = null;
+function startAmbience() {
+  if (_ambienceNode) return;
+  _ambienceNode = playSound('office_ambience', settings.volume / 100 * 0.4, true);
+}
+function stopAmbience() {
+  if (_ambienceNode) { try { _ambienceNode.pause(); } catch(e){} _ambienceNode = null; }
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// CANVAS GAME ENGINE
+// ══════════════════════════════════════════════════════════════════════
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+// ── Экран загрузки ──
+function drawLoadingScreen() {
+  const W = canvas.width, H = canvas.height;
+  ctx.fillStyle = '#050000';
+  ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = '#ff6a00';
+  ctx.font = "bold 32px 'Creepster', cursive";
+  ctx.textAlign = 'center';
+  ctx.fillText('Five Nights at Illusha\'s', W/2, H/2 - 60);
+  ctx.fillStyle = '#666';
+  ctx.font = "18px 'Share Tech Mono', monospace";
+  ctx.fillText('Загрузка ресурсов...', W/2, H/2 - 20);
+  // Progress bar
+  const bw = Math.min(400, W * 0.7), bh = 24, bx = W/2 - bw/2, by = H/2 + 10;
+  ctx.strokeStyle = '#442200';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(bx, by, bw, bh);
+  ctx.fillStyle = '#ff6a00';
+  ctx.fillRect(bx + 2, by + 2, (bw - 4) * loadProgress / 100, bh - 4);
+  ctx.fillStyle = '#fff';
+  ctx.font = "14px monospace";
+  ctx.fillText(loadProgress + '%', W/2, by + bh/2 + 5);
+  if (!assetsLoaded) requestAnimationFrame(drawLoadingScreen);
+}
+
+// ──────── DRAWING HELPERS ────────
+function drawRect(x,y,w,h,fill,stroke,lw=1,r=0) {
+  ctx.save();
+  if (r > 0) {
+    ctx.beginPath();
+    ctx.roundRect(x,y,w,h,r);
+    ctx.closePath();
+    if (fill) { ctx.fillStyle=fill; ctx.fill(); }
+    if (stroke) { ctx.strokeStyle=stroke; ctx.lineWidth=lw; ctx.stroke(); }
+  } else {
+    if (fill) { ctx.fillStyle=fill; ctx.fillRect(x,y,w,h); }
+    if (stroke) { ctx.strokeStyle=stroke; ctx.lineWidth=lw; ctx.strokeRect(x,y,w,h); }
+  }
+  ctx.restore();
+}
+
+function drawText(text, x, y, opts={}) {
+  const { size=18, color='#fff', font='Share Tech Mono', align='left', bold=false, shadow=null } = opts;
+  ctx.save();
+  ctx.font = `${bold?'bold ':''} ${size}px '${font}', monospace`;
+  ctx.textAlign = align;
+  ctx.textBaseline = 'middle';
+  if (shadow) { ctx.shadowColor=shadow; ctx.shadowBlur=12; }
+  ctx.fillStyle = color;
+  ctx.fillText(text, x, y);
+  ctx.restore();
+}
+
+function drawStaticNoise(count=20, alpha=0.15) {
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  for (let i = 0; i < count; i++) {
+    const x = Math.random() * canvas.width;
+    const y = Math.random() * canvas.height;
+    const w = Math.random() * 120;
+    const v = Math.floor(Math.random()*100+155);
+    ctx.fillStyle = `rgb(${v},${v},${v})`;
+    ctx.fillRect(x, y, w, 1);
+  }
+  ctx.restore();
+}
+
+// ──────── CAMERA VIEWS (drawn with canvas) ────────
+const CAMERA_COLORS = ['#0a0a14','#0a120a','#14080a','#100a14','#080a14'];
+const CAMERA_NAMES  = ['Коридор 1','Коридор 2','Лестница','Кухня','Вход'];
+
+function drawCameraView(camIdx, hasIlya, modeColor='') {
+  const W = canvas.width, H = canvas.height;
+
+  // --- Реальная картинка камеры ---
+  const camImgKeys = ['camera_1','camera_2','camera_3','camera_4','camera_5'];
+  const camImg = IMG[camImgKeys[camIdx]];
+  if (camImg && camImg.complete && camImg.naturalWidth > 0) {
+    // Рисуем картинку на весь экран с сохранением пропорций (cover)
+    const scale = Math.max(W / camImg.naturalWidth, H / camImg.naturalHeight);
+    const dw = camImg.naturalWidth * scale, dh = camImg.naturalHeight * scale;
+    ctx.drawImage(camImg, (W - dw)/2, (H - dh)/2, dw, dh);
+  } else {
+    // Запасной вариант — рисуем фон цветом
+    const base = CAMERA_COLORS[camIdx] || '#0a0a0a';
+    ctx.fillStyle = base;
+    ctx.fillRect(0,0,W,H);
+    drawRoomDetails(camIdx, W, H);
+  }
+
+  // CCTV эффект поверх картинки
+  ctx.save();
+  for (let y = 0; y < H; y += 4) {
+    ctx.fillStyle = 'rgba(0,0,0,0.07)';
+    ctx.fillRect(0, y, W, 2);
+  }
+  ctx.restore();
+
+  // ILYA
+  if (hasIlya) drawIlyaOnCamera(W, H);
+
+  // Camera label overlay
+  ctx.save();
+  ctx.fillStyle = 'rgba(0,0,0,0.5)';
+  ctx.fillRect(10,10,200,36);
+  ctx.strokeStyle = '#00ff88';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(10,10,200,36);
+  drawText('📷 КАМ ' + (camIdx+1) + ' — ' + CAMERA_NAMES[camIdx], 20, 28, { size:13, color:'#00ff88' });
+  ctx.restore();
+
+  // Static noise
+  drawStaticNoise(8, 0.1);
+}
+
+function drawRoomDetails(camIdx, W, H) {
+  ctx.save();
+  ctx.globalAlpha = 0.2;
+  // Different rooms have different "furniture"
+  if (camIdx === 0) { // Corridor 1
+    ctx.fillStyle = '#223';
+    ctx.fillRect(0, H*0.3, 40, H*0.7);
+    ctx.fillRect(W-40, H*0.3, 40, H*0.7);
+    // Door at end
+    ctx.fillStyle = '#1a1a2a';
+    ctx.fillRect(W/2-60, H*0.1, 120, H*0.6);
+    ctx.strokeStyle = '#334';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(W/2-60, H*0.1, 120, H*0.6);
+  } else if (camIdx === 1) { // Corridor 2
+    ctx.fillStyle = '#232';
+    ctx.fillRect(0, H*0.4, 30, H*0.6);
+    // Window
+    ctx.fillStyle = '#0a0a1a';
+    ctx.fillRect(W*0.6, H*0.1, 120, 100);
+    ctx.strokeStyle = '#223';
+    ctx.lineWidth=2; ctx.strokeRect(W*0.6, H*0.1, 120, 100);
+  } else if (camIdx === 2) { // Stairs
+    // Stairs pattern
+    ctx.fillStyle = '#1a1a1a';
+    for (let i=0;i<8;i++) {
+      ctx.fillRect(W*0.2+i*40, H*0.3+i*20, W*0.6-i*60, 18);
+    }
+  } else if (camIdx === 3) { // Kitchen
+    ctx.fillStyle = '#2a1a0a';
+    ctx.fillRect(0, H*0.5, W, H*0.5);
+    ctx.fillStyle = '#1a1010';
+    ctx.fillRect(W*0.1, H*0.3, 100, 60);
+    ctx.fillRect(W*0.5, H*0.3, 100, 60);
+  } else { // Entry
+    ctx.fillStyle = '#1a1a2a';
+    ctx.fillRect(W*0.3, 0, W*0.4, H*0.8);
+    ctx.strokeStyle = '#334';
+    ctx.lineWidth=2; ctx.strokeRect(W*0.3, 0, W*0.4, H*0.8);
+  }
+  ctx.restore();
+}
+
+function drawIlyaOnCamera(W, H) {
+  const img = IMG['camera_anim'];
+  if (img && img.complete && img.naturalWidth > 0) {
+    // Рисуем аниматроника по центру внизу, 400x550 как в питоне
+    const dw = Math.min(400, W * 0.4), dh = dw * (550/400);
+    ctx.save();
+    ctx.globalAlpha = 0.92;
+    ctx.drawImage(img, W/2 - dw/2, H - dh, dw, dh);
+    ctx.restore();
+    return;
+  }
+  // Запасной вариант — рисуем фигуру
+  const cx = W/2, by = H;
+  ctx.save();
+  ctx.globalAlpha = 0.9;
+  // Shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.5)';
+  ctx.beginPath();
+  ctx.ellipse(cx, by-10, 80, 20, 0, 0, Math.PI*2);
+  ctx.fill();
+  // Body
+  const bodyH = H*0.5;
+  ctx.fillStyle = '#1a1218';
+  ctx.fillRect(cx-60, by-bodyH, 120, bodyH-20);
+  // Head
+  ctx.fillStyle = '#2a1e22';
+  ctx.beginPath();
+  ctx.arc(cx, by-bodyH-50, 55, 0, Math.PI*2);
+  ctx.fill();
+  // Eyes — glowing white/red
+  const eyeGlow = 0.5 + 0.5*Math.sin(Date.now()/300);
+  ctx.fillStyle = `rgba(255,${Math.floor(50+eyeGlow*50)},${Math.floor(eyeGlow*30)},${0.7+eyeGlow*0.3})`;
+  ctx.beginPath(); ctx.arc(cx-18, by-bodyH-50, 12, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx+18, by-bodyH-50, 12, 0, Math.PI*2); ctx.fill();
+  // White glow
+  ctx.shadowColor = 'red'; ctx.shadowBlur = 20;
+  ctx.fillStyle = 'rgba(255,255,255,0.9)';
+  ctx.beginPath(); ctx.arc(cx-18, by-bodyH-50, 5, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx+18, by-bodyH-50, 5, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+
+// ──────── OFFICE VIEW ────────
+function drawOffice(state) {
+  const W = canvas.width, H = canvas.height;
+  const { doorClosed, flashlight, ilyaInHallway, lightsOut, leftRoom,
+          doorOverheat, redDoor, neonUI, isNight } = state;
+
+  if (lightsOut && !flashlight) {
+    ctx.fillStyle = '#030303';
+    ctx.fillRect(0,0,W,H);
+    // Vignette
+    const grad = ctx.createRadialGradient(W/2,H/2,0,W/2,H/2,W*0.6);
+    grad.addColorStop(0,'rgba(10,0,0,0.3)');
+    grad.addColorStop(1,'rgba(0,0,0,0.95)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0,0,W,H);
+    drawText('СВЕТ ВЫРУБЛЕН', W/2, H/2, {size:36, color:'#440000', align:'center', font:'Creepster'});
+    return;
+  }
+
+  if (leftRoom) {
+    drawLeftRoom(state);
+  } else {
+    drawMainOffice(state);
+  }
+}
+
+function drawMainOffice(state) {
+  const W = canvas.width, H = canvas.height;
+  const { doorClosed, flashlight, ilyaInHallway, doorOverheat, redDoor, neonUI } = state;
+
+  // ── Выбираем нужную картинку офиса ──
+  let officeImg = null;
+  if (doorClosed && flashlight)      officeImg = IMG['office_light_closed'];
+  else if (doorClosed)               officeImg = IMG['office_closed'];
+  else if (flashlight && ilyaInHallway) officeImg = IMG['office_light_hallway'];
+  else if (flashlight)               officeImg = IMG['office_light'];
+  else                               officeImg = IMG['office_open'];
+
+  if (!officeImg || !officeImg.complete || !officeImg.naturalWidth) {
+    // Запасной — рисуем фоновую картинку или просто цвет
+    officeImg = IMG['background'];
+  }
+
+  if (officeImg && officeImg.complete && officeImg.naturalWidth > 0) {
+    const scale = Math.max(W / officeImg.naturalWidth, H / officeImg.naturalHeight);
+    const dw = officeImg.naturalWidth * scale, dh = officeImg.naturalHeight * scale;
+    ctx.drawImage(officeImg, (W - dw)/2, (H - dh)/2, dw, dh);
+  } else {
+    // Полностью запасной вариант цветом
+    const bg = ctx.createLinearGradient(0,0,0,H);
+    bg.addColorStop(0, '#0a0808');
+    bg.addColorStop(1, '#0f0c0a');
+    ctx.fillStyle = bg;
+    ctx.fillRect(0,0,W,H);
+  }
+
+  // Аниматроник в коридоре (поверх картинки)
+  if (ilyaInHallway && !doorClosed) {
+    const ahImg = IMG['animatronic_attack'];
+    if (ahImg && ahImg.complete && ahImg.naturalWidth > 0) {
+      // Рисуем в правой части экрана
+      const aw = W * 0.18, ah = aw * (ahImg.naturalHeight / ahImg.naturalWidth);
+      ctx.save();
+      ctx.globalAlpha = 0.85 + 0.15 * Math.sin(Date.now()/150);
+      ctx.drawImage(ahImg, W * 0.82, H * 0.15, aw, ah);
+      ctx.restore();
+    } else {
+      // Запасные глаза
+      ctx.save();
+      const ey = 0.5 + 0.5*Math.sin(Date.now()/200);
+      ctx.fillStyle = `rgba(255,50,50,${0.7+ey*0.3})`;
+      ctx.shadowColor = 'red'; ctx.shadowBlur = 15;
+      ctx.beginPath(); ctx.arc(W*0.905, H*0.38, 6, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(W*0.935, H*0.38, 6, 0, Math.PI*2); ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  // Дверь закрыта — оверлей с замком
+  if (doorClosed) {
+    const doorColor = redDoor ? '#8b000088' : '#2a1a0a88';
+    ctx.save();
+    ctx.fillStyle = doorColor;
+    ctx.fillRect(W*0.87, H*0.15, W*0.1, H*0.68);
+    ctx.strokeStyle = doorOverheat ? '#ff6600' : (redDoor ? '#ff4444' : '#554422');
+    ctx.lineWidth = 3;
+    ctx.strokeRect(W*0.87, H*0.15, W*0.1, H*0.68);
+    drawText('🔒', W*0.92, H*0.5, { size:22, align:'center' });
+    ctx.restore();
+  }
+
+  // Фонарик
+  if (flashlight) {
+    ctx.save();
+    const lx = W*0.92, ly = H*0.5;
+    const fGrad = ctx.createRadialGradient(lx, ly, 0, lx, ly, W*0.35);
+    fGrad.addColorStop(0, 'rgba(255,250,200,0.10)');
+    fGrad.addColorStop(1, 'transparent');
+    ctx.fillStyle = fGrad;
+    ctx.fillRect(0,0,W,H);
+    ctx.restore();
+  }
+
+  // Виньетка
+  const vig = ctx.createRadialGradient(W/2,H/2,H*0.2,W/2,H/2,W*0.7);
+  vig.addColorStop(0,'transparent');
+  vig.addColorStop(1,'rgba(0,0,0,0.55)');
+  ctx.fillStyle = vig;
+  ctx.fillRect(0,0,W,H);
+}
+
+function drawLeftRoom(state) {
+  const W = canvas.width, H = canvas.height;
+  const { intercomAvail, lightsOut } = state;
+
+  // Пробуем реальную картинку левой комнаты
+  const lrImg = IMG['office_leftroom'];
+  if (lrImg && lrImg.complete && lrImg.naturalWidth > 0) {
+    const scale = Math.max(W / lrImg.naturalWidth, H / lrImg.naturalHeight);
+    const dw = lrImg.naturalWidth * scale, dh = lrImg.naturalHeight * scale;
+    ctx.drawImage(lrImg, (W - dw)/2, (H - dh)/2, dw, dh);
+  } else {
+    const bg = ctx.createLinearGradient(0,0,0,H);
+    bg.addColorStop(0, '#06080a');
+    bg.addColorStop(1, '#0a0c10');
+    ctx.fillStyle = bg;
+    ctx.fillRect(0,0,W,H);
+  }
+
+  // Домофон поверх — пустой или с аниматроником
+  const icImg = intercomAvail ? IMG['intercom_anim'] : IMG['intercom_empty'];
+  if (icImg && icImg.complete && icImg.naturalWidth > 0) {
+    const iw = Math.min(W * 0.32, 300), ih = iw * (icImg.naturalHeight / icImg.naturalWidth);
+    const ix = W/2 - iw/2, iy = H/2 - ih/2;
+    ctx.save();
+    if (intercomAvail) {
+      const pulse = 0.5 + 0.5*Math.sin(Date.now()/300);
+      ctx.globalAlpha = 0.85 + pulse * 0.15;
+    }
+    ctx.drawImage(icImg, ix, iy, iw, ih);
+    ctx.restore();
+    if (intercomAvail) {
+      const pulse = 0.5 + 0.5*Math.sin(Date.now()/300);
+      drawText('📞 ЗВОНОК!', W/2, H/2 + Math.min(W*0.32,300)/2*(icImg.naturalHeight/icImg.naturalWidth)/2 + 30,
+        { size:22, color:`rgba(255,220,80,${0.6+pulse*0.4})`, align:'center' });
+    }
+  } else {
+    // Запасной вариант — рисуем панель
+    const panX = W*0.35, panY = H*0.2, panW = W*0.3, panH = H*0.5;
+    ctx.fillStyle = '#0f0d0c';
+    ctx.fillRect(panX, panY, panW, panH);
+    ctx.strokeStyle = '#332211';
+    ctx.lineWidth=2; ctx.strokeRect(panX, panY, panW, panH);
+    for (let i=0;i<8;i++) {
+      ctx.fillStyle = '#1a1510';
+      ctx.fillRect(panX+20, panY+30+i*18, panW-40, 10);
+    }
+    if (intercomAvail) {
+      const pulse = 0.5 + 0.5*Math.sin(Date.now()/300);
+      ctx.strokeStyle = `rgba(255,200,0,${0.5+pulse*0.5})`;
+      ctx.lineWidth=3;
+      ctx.strokeRect(panX+20, panY+panH*0.5, panW-40, panH*0.35);
+      drawText('📞 ЗВОНОК!', W/2, panY+panH*0.7, { size:22, color:`rgba(255,220,80,${0.6+pulse*0.4})`, align:'center' });
+    }
+    drawText('ДОМОФОН', W/2, panY+20, { size:14, color:'#554433', align:'center' });
+  }
+
+  // Виньетка
+  const vig = ctx.createRadialGradient(W/2,H/2,H*0.15,W/2,H/2,W*0.65);
+  vig.addColorStop(0,'transparent');
+  vig.addColorStop(1,'rgba(0,0,0,0.65)');
+  ctx.fillStyle = vig;
+  ctx.fillRect(0,0,W,H);
+}
+
+// ──────── CAMERA MAP ────────
+function drawCameraMap(currentCam, ilyaPos, W, H) {
+  const mapW=220, mapH=200, mx=W-mapW-10, my=H-mapH-10;
+  ctx.save();
+  ctx.globalAlpha = 0.9;
+  ctx.fillStyle = 'rgba(5,5,10,0.92)';
+  ctx.strokeStyle = '#224422';
+  ctx.lineWidth=1;
+  ctx.beginPath(); ctx.roundRect(mx,my,mapW,mapH,6); ctx.closePath();
+  ctx.fill(); ctx.stroke();
+
+  // Camera nodes
+  const nodes = [
+    { i:0, x:mx+110, y:my+150, label:'1' },
+    { i:1, x:mx+140, y:my+110, label:'2' },
+    { i:2, x:mx+120, y:my+30,  label:'3' },
+    { i:3, x:mx+30,  y:my+30,  label:'4' },
+    { i:4, x:mx+200, y:my+30,  label:'5' },
+  ];
+  // Lines between nodes
+  ctx.strokeStyle = '#224';
+  ctx.lineWidth=1;
+  [[0,1],[1,2],[2,3],[1,4]].forEach(([a,b]) => {
+    ctx.beginPath(); ctx.moveTo(nodes[a].x+15,nodes[a].y+15); ctx.lineTo(nodes[b].x+15,nodes[b].y+15); ctx.stroke();
+  });
+  nodes.forEach(n => {
+    const isCurrent = n.i === currentCam;
+    const hasIlya   = ilyaPos !== null && n.i === ilyaPos;
+    ctx.fillStyle = isCurrent ? '#003311' : (hasIlya ? '#330000' : '#0a0a0a');
+    ctx.strokeStyle = isCurrent ? '#00ff88' : (hasIlya ? '#ff3333' : '#334');
+    ctx.lineWidth = isCurrent ? 2 : 1;
+    ctx.beginPath(); ctx.roundRect(n.x,n.y,30,28,4); ctx.closePath();
+    ctx.fill(); ctx.stroke();
+    drawText(hasIlya ? '👁' : n.label, n.x+15, n.y+14, { size:12, color: isCurrent ? '#00ff88' : (hasIlya?'#ff4444':'#aaa'), align:'center' });
+  });
+  ctx.restore();
+}
+
+// ──────── HUD ────────
+function drawHUD(state) {
+  const W = canvas.width, H = canvas.height;
+  const { energy, doorClosed, flashlight, cameraActive, hour,
+          elapsed, nightLength, camerasBroken, lightsOut, doorHeat, doorOverheat,
+          neonUI, colorblind, ilyaInHallway, currentCam, ilyaPos, leftRoom, showFps, fps } = state;
+
+  const uiColor = neonUI ? '#00ffcc' : '#e8e8e8';
+
+  // Top-left panel
+  ctx.save();
+  ctx.globalAlpha = 0.88;
+  ctx.fillStyle = neonUI ? 'rgba(0,10,12,0.92)' : 'rgba(0,0,0,0.85)';
+  ctx.beginPath(); ctx.roundRect(6,6,220,172,8); ctx.closePath(); ctx.fill();
+  if (neonUI) { ctx.strokeStyle='rgba(0,255,200,0.3)'; ctx.lineWidth=1; ctx.stroke(); }
+  ctx.restore();
+
+  // Energy bar
+  const energyColor = colorblind
+    ? (energy < 30 ? '#6666ff' : '#4488ff')
+    : (energy < 30 ? '#ff3333' : energy < 60 ? '#ff9900' : '#00cc55');
+  const ePct = Math.max(0, energy/100);
+  drawText('⚡ ЭНЕРГИЯ', 14, 24, { size:13, color: uiColor });
+  drawRect(14,34,190,14,'#1a1a1a','#333',1,3);
+  drawRect(14,34,190*ePct,14,energyColor,null,0,3);
+  drawText(`${Math.round(energy)}%`, 210, 41, { size:11, color:energyColor, align:'right' });
+
+  // Door heat
+  if (doorHeat > 0 || doorOverheat) {
+    const hColor = doorOverheat ? '#ff4400' : '#ff8800';
+    drawText('🌡 ДВЕРЬ', 14, 60, { size:13, color: uiColor });
+    drawRect(14,70,190,10,'#1a1a1a','#333',1,3);
+    drawRect(14,70,190*(doorHeat/100),10,hColor,null,0,3);
+    if (doorOverheat) drawText('ПЕРЕГРЕВ!', 110, 75, { size:11, color:'#ff6600', align:'center' });
+  }
+
+  // Status icons
+  const statusY = doorHeat > 0 ? 96 : 60;
+  const states = [
+    { label: cameraActive ? '📷 КАМ.ВКЛ' : '📷 КАМ.ВЫКЛ', color: cameraActive ? '#00ff88' : '#555' },
+    { label: doorClosed ? '🔒 ДВЕРЬ' : '🚪 ОТКРЫТА', color: doorClosed ? '#ff9900' : '#00aa44' },
+    { label: flashlight ? '🔦 СВЕТИТ' : '🔦 ВЫКЛ', color: flashlight ? '#ffee00' : '#555' },
+  ];
+  states.forEach((s,i) => drawText(s.label, 14, statusY + i*22, { size:12, color:s.color }));
+
+  // Hour clock
+  const clockY = statusY + 72;
+  const hourLabel = ['1:00','2:00','3:00','4:00','5:00','6:00 AM'][Math.min(hour,5)];
+  drawText('🕐 ' + hourLabel, 14, clockY, { size:14, color: hour >= 5 ? '#ffaa00' : uiColor });
+
+  // Night progress bar
+  const prog = Math.min(elapsed / nightLength, 1);
+  drawRect(14, clockY+18, 190, 6, '#1a1a1a', '#333', 1, 3);
+  drawRect(14, clockY+18, 190*prog, 6, '#446688', null, 0, 3);
+
+  // Room indicator
+  drawText(leftRoom ? '← КОМНАТА' : '🖥 ОФИС', 14, clockY+34, { size:12, color:'#778899' });
+
+  // Warnings
+  if (camerasBroken && cameraActive) {
+    const blink = Math.sin(Date.now()/200) > 0;
+    if (blink) drawText('⚠ НЕТ СИГНАЛА', W/2, H/2, { size:40, color:'#ff3333', align:'center', font:'Creepster' });
+    drawStaticNoise(80, 0.3);
+  }
+  if (lightsOut && !flashlight) {
+    const blink2 = Math.sin(Date.now()/300) > 0;
+    if (blink2) drawText('⚠ СВЕТ ВЫРУБЛЕН', W/2, H/2, { size:36, color:'#aa2200', align:'center', font:'Creepster' });
+  }
+  if (ilyaInHallway && !doorClosed) {
+    const pulse = 0.5 + 0.5*Math.sin(Date.now()/150);
+    drawText('!!! ИЛЬЯ У ДВЕРИ !!!', W/2, H*0.15, { size:28, color:`rgba(255,50,50,${0.7+pulse*0.3})`, align:'center', font:'Creepster' });
+  }
+
+  // Camera map (when camera active)
+  if (cameraActive && !camerasBroken) drawCameraMap(currentCam, ilyaPos, W, H);
+
+  // Bottom buttons
+  const btnY = H - 76;
+  const btnCam = { x:W/2-120, y:btnY, w:240, h:56 };
+  const hov = false; // no hover from canvas
+  ctx.save();
+  ctx.globalAlpha = 0.85;
+  ctx.fillStyle = cameraActive ? '#003311' : '#0a0a0a';
+  ctx.strokeStyle = cameraActive ? '#00ff88' : '#334';
+  ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.roundRect(btnCam.x,btnCam.y,btnCam.w,btnCam.h,8); ctx.closePath();
+  ctx.fill(); ctx.stroke();
+  ctx.restore();
+  drawText(cameraActive ? '📷 КАМЕРЫ [ВКЛ]' : '📷 КАМЕРЫ [ВЫКЛ]', W/2, btnY+28, { size:15, color: cameraActive?'#00ff88':'#aaa', align:'center' });
+  drawText('[ПРОБЕЛ]', W/2, btnY+46, { size:10, color:'#555', align:'center' });
+
+  // Right panel: door + flashlight
+  const rpx = W-158, rpy = H/2-104;
+  if (!cameraActive) {
+    // Door btn
+    ctx.save(); ctx.globalAlpha=0.85;
+    ctx.fillStyle = doorClosed ? '#3a2000' : '#0a1a0a';
+    ctx.strokeStyle = doorClosed ? '#ff9900' : '#336633';
+    ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.roundRect(rpx,rpy,140,78,8); ctx.closePath();
+    ctx.fill(); ctx.stroke();
+    ctx.restore();
+    drawText(doorClosed ? '🔒 ЗАКРЫТА' : '🚪 ДВЕРЬ', rpx+70, rpy+34, { size:14, color:'#fff', align:'center' });
+    drawText('[D]', rpx+70, rpy+58, { size:11, color:'#666', align:'center' });
+
+    // Flashlight btn
+    ctx.save(); ctx.globalAlpha=0.85;
+    ctx.fillStyle = flashlight ? '#2a2400' : '#0a0a0a';
+    ctx.strokeStyle = flashlight ? '#ffee00' : '#444';
+    ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.roundRect(rpx,rpy+94,140,78,8); ctx.closePath();
+    ctx.fill(); ctx.stroke();
+    ctx.restore();
+    drawText(flashlight ? '🔦 СВЕТИТ' : '🔦 ФОНАРИК', rpx+70, rpy+133, { size:14, color:'#fff', align:'center' });
+    drawText('[R зажать]', rpx+70, rpy+158, { size:10, color:'#666', align:'center' });
+
+    // Left panel: room switch + intercom
+    const lpx=20, lpy=H/2-104;
+    ctx.save(); ctx.globalAlpha=0.85;
+    ctx.fillStyle = leftRoom ? '#002208' : '#08080a';
+    ctx.strokeStyle = leftRoom ? '#00aa44' : '#336';
+    ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.roundRect(lpx,lpy,130,78,8); ctx.closePath();
+    ctx.fill(); ctx.stroke();
+    ctx.restore();
+    drawText(leftRoom ? '→ ОФИС' : '← КОМНАТА', lpx+65, lpy+34, { size:13, color:'#fff', align:'center' });
+    drawText('[←]', lpx+65, lpy+58, { size:11, color:'#666', align:'center' });
+  }
+
+  // FPS
+  if (showFps && fps) {
+    drawText('FPS: '+Math.round(fps), W-10, H-10, { size:11, color:'#446644', align:'right' });
+  }
+}
+
+// Psychosis effect
+function drawPsychosis(intensity) {
+  const W=canvas.width, H=canvas.height;
+  const t = Date.now()/1000;
+  ctx.save();
+  ctx.globalAlpha = intensity * 0.15;
+  ctx.fillStyle = `rgb(${Math.floor(80*intensity)},0,${Math.floor(40*intensity)})`;
+  ctx.fillRect(Math.sin(t*7.3)*8*intensity, Math.cos(t*5.1)*4*intensity, W, H);
+  ctx.restore();
+  if (Math.random() < 0.12*intensity) drawStaticNoise(20, 0.15*intensity);
+  if (Math.random() < 0.04*intensity) {
+    const gy = Math.random()*(H-20);
+    ctx.save();
+    ctx.drawImage(canvas, 0, gy, W, 12, Math.random()*40-20, gy, W, 12);
+    ctx.restore();
+  }
+  if (Math.random() < 0.02*intensity) {
+    ctx.save(); ctx.globalAlpha=intensity*0.08;
+    ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H); ctx.restore();
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// GAME LOOP
+// ══════════════════════════════════════════════════════════════════════
+let G = null; // game state
+let animFrame = null;
+
+function startGame(diffKey, specialMode) {
+  showScreen('menuScreen'); // hide all screens
+  document.getElementById('menuScreen').classList.add('hidden');
+  document.getElementById('gameCanvas').classList.remove('hidden');
+  document.getElementById('minigameOverlay').classList.add('hidden');
+  document.getElementById('intercomOverlay').classList.add('hidden');
+  document.getElementById('pauseOverlay').classList.add('hidden');
+  document.getElementById('resultOverlay').classList.add('hidden');
+
+  const isEndless  = specialMode === 'endless';
+  const isSpeedrun = specialMode === 'speedrun';
+  const isPeaceful = specialMode === 'peaceful';
+  const isPsychosis= specialMode === 'psychosis';
+  const baseDiff   = DIFFICULTIES[diffKey] || DIFFICULTIES.normal;
+  const ownedItems = save.ownedItems || [];
+
+  let moveDelayBonus = 1.0;
+  if (ownedItems.includes('slow_animatronic_2')) moveDelayBonus = 1.55;
+  else if (ownedItems.includes('slow_animatronic')) moveDelayBonus = 1.3;
+  if (ownedItems.includes('boost_speed')) {
+    moveDelayBonus *= 1.5;
+    save.ownedItems = save.ownedItems.filter(i=>i!=='boost_speed');
+  }
+  moveDelayBonus *= baseDiff.moveDelayMult;
+
+  let energyDrain = baseDiff.energyDrainMult;
+  if (ownedItems.includes('boost_energy')) {
+    energyDrain *= 0.5;
+    save.ownedItems = save.ownedItems.filter(i=>i!=='boost_energy');
+  }
+
+  let startEnergy = 100;
+  if (ownedItems.includes('extra_energy_2')) startEnergy = 150;
+  else if (ownedItems.includes('extra_energy')) startEnergy = 125;
+
+  let doorOverheatMax = baseDiff.doorOverheatTime;
+  let breakdownChance = baseDiff.breakdownChance;
+  let bellDelayBonus  = ownedItems.includes('doorbell_delay') ? 1.5 : 1.0;
+
+  let nightLength = isSpeedrun ? 180 : 510;
+
+  if (isPeaceful) { breakdownChance = 0; moveDelayBonus = 9999; }
+  if (isSpeedrun)  { moveDelayBonus *= 0.4; breakdownChance *= 3; bellDelayBonus *= 0.4; }
+
+  G = {
+    diffKey: diffKey || 'normal',
+    baseDiff, specialMode, isEndless, isSpeedrun, isPeaceful, isPsychosis,
+    ownedItems: [...(save.ownedItems||[])],
+    armorActive: ownedItems.includes('armor'),
+    neonUI: ownedItems.includes('skin_neon_ui'),
+    redDoor: ownedItems.includes('skin_red_door'),
+
+    // energy
+    energy: startEnergy, startEnergy, energyDrain, startEnergyValue: startEnergy,
+
+    // timing
+    nightStart: performance.now()/1000,
+    nightLength,
+    elapsed: 0, hour: 1,
+    moveDelayBonus, doorOverheatMax, breakdownChance, bellDelayBonus,
+
+    // ilya
+    ilyaPosition: 4, ilyaInHallway: false, ilyaDoorFlag: false, ilyaDoorTime: 0,
+    lastMoveTime: 0, ilyaMoveDelay: 15 * moveDelayBonus,
+
+    // door
+    doorClosed: false, doorHeat: 0, doorOverheat: false, doorOverheatEnd: 0,
+
+    // camera
+    cameraActive: false, currentCamera: 0, camerasBroken: false, camerasBrokenEnd: 0,
+    lightsOut: false, lightsOutEnd: 0,
+
+    // flashlight
+    flashlight: false,
+
+    // room
+    leftRoom: false,
+
+    // artem
+    artemCalledDoor: false, artemAtIntercom: false, intercomOn: false,
+    doorbellPlaying: false, lastDoorbellTime: performance.now()/1000,
+    doorbellInterval: (30+Math.random()*15) * bellDelayBonus,
+    artemIntercomSkipped: 0,
+
+    // random event
+    randomEventTriggered: false, randomEventTime: 60 + Math.random()*120,
+
+    // minigame
+    minigameTriggered: false, minigameCooldown: false, minigameStartTime: 0, minigameWarnTime: 3,
+
+    // psychosis
+    psychosisIntensity: 0,
+
+    // stats
+    statFlashlight: false, statDoor: false,
+
+    // misc
+    coinBonus: baseDiff.coinBonus,
+    endlessNightCount: isEndless ? 0 : 1,
+
+    // fps
+    fps: 60, fpsFrames: 0, fpsPrev: performance.now()/1000,
+
+    // paused / minigame / intercom active
+    paused: false, inMinigame: false, inIntercom: false,
+  };
+
+  if (isEndless) startEndlessNight();
+
+  stopAmbience();
+  startAmbience();
+  cancelAnimationFrame(animFrame);
+  animFrame = requestAnimationFrame(gameFrame);
+}
+
+function startEndlessNight() {
+  G.endlessNightCount++;
+  const now = performance.now()/1000;
+  G.nightStart = now;
+  G.energy = G.startEnergy;
+  G.doorClosed = false; G.flashlight = false;
+  G.ilyaPosition = 4; G.ilyaInHallway = false; G.ilyaDoorFlag = false;
+  G.doorHeat = 0; G.doorOverheat = false;
+  G.camerasBroken = false; G.lightsOut = false;
+  G.artemCalledDoor = false; G.artemAtIntercom = false; G.intercomOn = false;
+  G.lastDoorbellTime = now;
+  G.doorbellInterval = (30+Math.random()*15) * G.bellDelayBonus;
+  G.randomEventTriggered = false; G.randomEventTime = 60+Math.random()*120;
+  G.minigameTriggered = false; G.minigameCooldown = false;
+  G.psychosisIntensity = 0;
+  G.statFlashlight = false; G.statDoor = false;
+  notify(`Ночь ${G.endlessNightCount}!`, '#b464ff', 3);
+}
+
+let lastFrame = 0;
+function gameFrame(ts) {
+  if (!G) return;
+  animFrame = requestAnimationFrame(gameFrame);
+
+  const now = performance.now()/1000;
+  const dt = Math.min(now - (lastFrame||now), 0.1);
+  lastFrame = now;
+
+  // FPS
+  G.fpsFrames++;
+  if (now - G.fpsPrev >= 1) {
+    G.fps = G.fpsFrames; G.fpsFrames = 0; G.fpsPrev = now;
+  }
+
+  if (G.paused || G.inMinigame || G.inIntercom) {
+    // just draw current state
+    renderGame(now);
+    return;
+  }
+
+  G.elapsed = now - G.nightStart;
+  G.hour = Math.min(5, Math.floor(G.elapsed / G.nightLength * 6));
+
+  // ── VICTORY ──
+  if (G.elapsed >= G.nightLength) {
+    if (G.isEndless) {
+      const coins = Math.floor(10 * G.endlessNightCount);
+      save.coins += coins;
+      saveAll();
+      notify(`Ночь ${G.endlessNightCount} пережита! +${coins} монет`, '#b464ff', 3);
+      startEndlessNight();
+    } else {
+      onVictory();
+      return;
+    }
+  }
+
+  // ── PSYCHOSIS ──
+  if (G.isPsychosis) G.psychosisIntensity = Math.min(1, G.psychosisIntensity + 0.0005);
+
+  // ── RANDOM EVENT ──
+  if (!G.randomEventTriggered && G.elapsed >= G.randomEventTime && !G.isPeaceful) {
+    G.randomEventTriggered = true;
+    G.ilyaMoveDelay = Math.max(5, G.ilyaMoveDelay * 0.6);
+    playSound('random_event', 0.5);
+    notify('⚠ ПОМЕХИ В СИСТЕМЕ! Илья ускорился!', '#ff6600', 4);
+  }
+
+  // ── BREAKDOWNS ──
+  if (!G.camerasBroken && !G.isPeaceful && Math.random() < G.breakdownChance) {
+    G.camerasBroken = true;
+    G.camerasBrokenEnd = now + 5 + Math.random()*7;
+    notify('КАМЕРЫ ОТКЛЮЧЕНЫ!', '#ff3333', 3);
+  }
+  if (G.camerasBroken && now > G.camerasBrokenEnd) {
+    G.camerasBroken = false;
+    notify('Камеры восстановлены', '#00ff88', 2);
+  }
+  if (!G.lightsOut && !G.camerasBroken && !G.isPeaceful && Math.random() < G.breakdownChance*0.5) {
+    G.lightsOut = true;
+    G.lightsOutEnd = now + 3 + Math.random()*5;
+    notify('СВЕТ ВЫРУБЛЕН!', '#ff3333', 3);
+  }
+  if (G.lightsOut && now > G.lightsOutEnd) {
+    G.lightsOut = false;
+    notify('Свет вернулся', '#00ff88', 2);
+  }
+
+  // ── DOOR HEAT ──
+  if (G.doorClosed && !G.doorOverheat) {
+    G.doorHeat += (100 / (G.doorOverheatMax * 60)) * (dt*60);
+    if (G.doorHeat >= 100) {
+      G.doorHeat = 100; G.doorOverheat = true;
+      G.doorOverheatEnd = now + 8;
+      G.doorClosed = false;
+      notify('ДВЕРЬ ПЕРЕГРЕЛАСЬ! Заклинило на 8 сек!', '#ff8800', 4);
+    }
+  } else if (!G.doorClosed && !G.doorOverheat) {
+    G.doorHeat = Math.max(0, G.doorHeat - 0.3*(dt*60));
+  }
+  if (G.doorOverheat && now > G.doorOverheatEnd) {
+    G.doorOverheat = false; G.doorHeat = 0;
+    notify('Дверь остыла', '#00aaff', 2);
+    if (G.ilyaDoorFlag) G.ilyaDoorTime = now;
+  }
+
+  // ── ILYA MOVEMENT ──
+  if (!G.isPeaceful && now - G.lastMoveTime > G.ilyaMoveDelay) {
+    if (G.ilyaPosition !== null && G.ilyaPosition > 0) {
+      G.ilyaPosition--;
+    } else if (G.ilyaPosition === 0) {
+      G.ilyaInHallway = true; G.ilyaPosition = null;
+      G.ilyaDoorFlag = true; G.ilyaDoorTime = now;
+    }
+    G.lastMoveTime = now;
+  }
+
+  // ── ILYA ATTACK ──
+  const doorSafe = G.doorClosed || G.doorOverheat;
+  if (!G.isPeaceful && G.ilyaDoorFlag && !doorSafe) {
+    if (now - G.ilyaDoorTime > 5) {
+      onDeath('ilya');
+      return;
+    }
+  }
+
+  // ── ARTEM DOORBELL ──
+  if (!G.artemCalledDoor && now - G.lastDoorbellTime > G.doorbellInterval) {
+    G.artemCalledDoor = true; G.artemAtIntercom = true;
+    playSound('doorbell', 0.6);
+    notify('📞 Артём звонит в домофон!', '#ffcc00', 4);
+  }
+
+  // ── MINIGAME CHECK ──
+  const ilyaOnCam = G.cameraActive && G.ilyaPosition === G.currentCamera;
+  if (ilyaOnCam && !G.minigameCooldown && !G.inMinigame) {
+    if (!G.minigameTriggered) {
+      const chances = { easy:0.2, normal:0.35, hard:0.55 };
+      const chance = G.isEndless ? Math.min(0.9, 0.35 + G.endlessNightCount*0.05) : (chances[G.diffKey]||0.35);
+      if (Math.random() < chance * dt) {
+        G.minigameTriggered = true;
+        G.minigameStartTime = now;
+        notify('!! ИЛЬЯ ЛОМАЕТ КАМЕРУ !!', '#ff3c3c', G.minigameWarnTime);
+      }
+    }
+    if (G.minigameTriggered && now - G.minigameStartTime >= G.minigameWarnTime) {
+      G.minigameCooldown = true; G.minigameTriggered = false;
+      startMinigame();
+      return;
+    }
+  } else if (!ilyaOnCam) {
+    G.minigameTriggered = false; G.minigameCooldown = false;
+  }
+
+  // ── ENERGY DRAIN ──
+  if (G.doorClosed) G.energy -= 0.6 * G.energyDrain * dt;
+  if (G.flashlight) G.energy -= 1.2 * G.energyDrain * dt;
+  if (G.cameraActive && !G.camerasBroken) G.energy -= 0.6 * G.energyDrain * dt;
+
+  if (G.energy <= 0) { G.energy = 0; onDeath('energy'); return; }
+
+  renderGame(now);
+}
+
+function renderGame(now) {
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0,0,W,H);
+
+  if (G.cameraActive && !G.camerasBroken) {
+    const hasIlya = G.ilyaPosition === G.currentCamera;
+    drawCameraView(G.currentCamera, hasIlya);
+  } else {
+    drawOffice({
+      doorClosed: G.doorClosed, flashlight: G.flashlight,
+      ilyaInHallway: G.ilyaInHallway, lightsOut: G.lightsOut,
+      leftRoom: G.leftRoom, doorOverheat: G.doorOverheat,
+      redDoor: G.redDoor, neonUI: G.neonUI,
+      intercomAvail: G.leftRoom && G.artemCalledDoor && G.artemAtIntercom && !G.intercomOn,
+    });
+  }
+
+  if (G.isPsychosis && G.psychosisIntensity > 0) drawPsychosis(G.psychosisIntensity);
+
+  drawHUD({
+    energy: G.energy, doorClosed: G.doorClosed, flashlight: G.flashlight,
+    cameraActive: G.cameraActive, hour: G.hour, elapsed: G.elapsed,
+    nightLength: G.nightLength, camerasBroken: G.camerasBroken,
+    lightsOut: G.lightsOut, doorHeat: G.doorHeat, doorOverheat: G.doorOverheat,
+    neonUI: G.neonUI, colorblind: settings.colorblind,
+    ilyaInHallway: G.ilyaInHallway, currentCam: G.currentCamera,
+    ilyaPos: G.ilyaPosition, leftRoom: G.leftRoom,
+    showFps: settings.showFps, fps: G.fps,
+  });
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// MINI-GAME
+// ══════════════════════════════════════════════════════════════════════
+let mgState = null;
+
+function startMinigame() {
+  G.inMinigame = true;
+  const diffs = { easy:{zoneW:120,speed:4,attempts:4}, normal:{zoneW:75,speed:7,attempts:3}, hard:{zoneW:45,speed:11,attempts:2} };
+  const ds = diffs[G.diffKey] || diffs.normal;
+
+  mgState = {
+    barW: Math.min(600, window.innerWidth*0.85),
+    zoneW: ds.zoneW, speed: ds.speed, attempts: ds.attempts,
+    cursorX: 0, direction: 1,
+    interval: null
+  };
+
+  const overlay = document.getElementById('minigameOverlay');
+  overlay.classList.remove('hidden');
+  document.getElementById('mgAttempts').textContent = `Попыток: ${mgState.attempts}`;
+
+  // Position zone
+  const zone = document.getElementById('mgZone');
+  const cursor = document.getElementById('mgCursor');
+  const pct = ((mgState.barW/2 - mgState.zoneW/2) / mgState.barW * 100);
+  zone.style.left = pct + '%';
+  zone.style.width = (mgState.zoneW / mgState.barW * 100) + '%';
+  cursor.style.left = '0%';
+
+  mgState.interval = setInterval(moveCursor, 50);
+}
+
+function moveCursor() {
+  if (!mgState) return;
+  mgState.cursorX += mgState.speed * mgState.direction;
+  if (mgState.cursorX <= 0) { mgState.cursorX = 0; mgState.direction = 1; }
+  else if (mgState.cursorX >= mgState.barW - 28) { mgState.cursorX = mgState.barW - 28; mgState.direction = -1; }
+  const pct = (mgState.cursorX / mgState.barW * 100);
+  document.getElementById('mgCursor').style.left = pct + '%';
+}
+
+function triggerMinigame() {
+  if (!mgState || !G.inMinigame) return;
+  const barW = mgState.barW;
+  const zoneStart = barW/2 - mgState.zoneW/2;
+  const cx = mgState.cursorX + 14;
+  if (cx >= zoneStart && cx <= zoneStart + mgState.zoneW) {
+    // SUCCESS
+    clearInterval(mgState.interval); mgState = null;
+    document.getElementById('minigameOverlay').classList.add('hidden');
+    G.inMinigame = false; G.minigameCooldown = true;
+    G.ilyaPosition = Math.min(4, (G.ilyaPosition||0) + 2);
+    G.ilyaInHallway = false; G.ilyaDoorFlag = false;
+    notify('Илья отброшен назад!', '#00ff88', 3);
+  } else {
+    // MISS
+    mgState.attempts--;
+    mgState.speed = Math.min(mgState.speed + 2, 18);
+    document.getElementById('mgAttempts').textContent = `Попыток: ${mgState.attempts}`;
+    notify('Мимо!', '#ff5555', 1);
+    if (mgState.attempts <= 0) {
+      clearInterval(mgState.interval); mgState = null;
+      document.getElementById('minigameOverlay').classList.add('hidden');
+      G.inMinigame = false; G.minigameCooldown = true;
+      G.energy -= 25;
+      notify('Камера сломана! -25 энергии', '#ff3333', 3);
+      if (G.energy <= 0) { onDeath('energy'); }
+    }
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// INTERCOM
+// ══════════════════════════════════════════════════════════════════════
+let icState = null;
+
+function openIntercom() {
+  if (!G || G.inIntercom || !G.artemCalledDoor || !G.artemAtIntercom) return;
+  G.inIntercom = true;
+  const scenario = ARTEM_SCENARIOS[Math.floor(Math.random()*ARTEM_SCENARIOS.length)];
+  icState = { scenario, timeLeft: 14, startTime: performance.now()/1000 };
+
+  document.getElementById('icGreeting').textContent = scenario.greeting;
+  const timerEl = document.getElementById('icTimer');
+  const optEl = document.getElementById('icOptions');
+  optEl.innerHTML = scenario.options.map((opt,i) =>
+    `<div class="ic-btn" onclick="chooseIntercom(${i})">${opt.text}</div>`
+  ).join('');
+
+  document.getElementById('intercomOverlay').classList.remove('hidden');
+
+  icState.timer = setInterval(() => {
+    if (!icState) return;
+    const elapsed = performance.now()/1000 - icState.startTime;
+    const left = Math.max(0, 14 - elapsed);
+    timerEl.textContent = Math.ceil(left);
+    timerEl.parentElement.style.color = left < 5 ? '#ff3333' : '#ff9900';
+    if (left <= 0) { chooseIntercom(-1); } // timeout = death
+  }, 250);
+}
+
+function chooseIntercom(optIdx) {
+  if (!icState) return;
+  clearInterval(icState.timer);
+  document.getElementById('intercomOverlay').classList.add('hidden');
+  G.inIntercom = false;
+
+  const scenario = icState.scenario;
+  icState = null;
+
+  if (optIdx < 0) { intercomResult('death'); return; }
+
+  const opt = scenario.options[optIdx];
+  if (opt.result === 'death') { intercomResult('death'); return; }
+  if (opt.result === 'later') { intercomResult('later'); return; }
+
+  // Success path
+  if (opt.cost > 0 && save.coins < opt.cost) {
+    notify('Недостаточно монет!', '#ff5555', 2);
+    G.inIntercom = false;
+    intercomResult('later');
+    return;
+  }
+  save.coins -= opt.cost;
+
+  let bonus = 0, text = 'Ок.';
+  if (settings.artemLuck && opt.luck) {
+    let roll = Math.random(), cumul = 0;
+    let picked = opt.luck[opt.luck.length-1];
+    for (const o of opt.luck) { cumul += o.chance; if (roll < cumul) { picked = o; break; } }
+    bonus = picked.bonus; text = picked.text;
+  } else if (opt.luck) {
+    const neutral = opt.luck.find(o => o.bonus === 0) || opt.luck[opt.luck.length-1];
+    bonus = neutral.bonus; text = neutral.text;
+  }
+  save.coins += bonus;
+  saveAll();
+  notify(text, bonus >= 0 ? '#00ff88' : '#ff5555', 3);
+  if (bonus > 0) notify(`+${bonus} монет! 🍀`, '#ffd700', 2);
+
+  intercomResult('success');
+}
+
+function intercomResult(result) {
+  if (result === 'death') {
+    // Artem angry = game over
+    if (G.armorActive) {
+      G.armorActive = false;
+      notify('Бронежилет спас тебя!', '#00ffff', 3);
+      G.artemCalledDoor = false;
+      G.lastDoorbellTime = performance.now()/1000;
+      G.doorbellInterval = (30+Math.random()*15)*G.bellDelayBonus;
+    } else {
+      onDeath('artem');
+    }
+    return;
+  }
+  if (result === 'later') {
+    G.artemIntercomSkipped = (G.artemIntercomSkipped||0) + 1;
+    if (G.artemIntercomSkipped >= 5) {
+      if (!save.completedQuests.includes('quest_no_intercom_5')) {
+        save.completedQuests.push('quest_no_intercom_5');
+        save.coins += 35; saveAll();
+        notify('КВЕСТ ВЫПОЛНЕН: Молчание домофона! +35 монет', '#00ffc8', 4);
+      }
+      unlockAchievement('no_intercom_5');
+    }
+  }
+  if (result === 'success') {
+    G.artemIntercomSkipped = 0;
+    G.artemCalledDoor = false;
+    G.lastDoorbellTime = performance.now()/1000;
+    G.doorbellInterval = (30+Math.random()*15)*G.bellDelayBonus;
+  }
+  G.artemAtIntercom = false;
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// DEATH / VICTORY
+// ══════════════════════════════════════════════════════════════════════
+function onDeath(cause) {
+  cancelAnimationFrame(animFrame);
+  stopAmbience();
+
+  // Скример — выбираем звук в зависимости от причины
+  if (cause === 'ilya') {
+    playSound('attack', 0.9);
+  } else if (cause === 'artem') {
+    playSound('attack2', 0.9);
+  } else {
+    playSound('game_over', 0.7);
+  }
+
+  // Через секунду — звук game over поверх
+  if (cause !== 'energy') {
+    setTimeout(() => playSound('game_over', 0.5), 800);
+  }
+  if (G.isEndless) {
+    addToLeaderboard(G.endlessNightCount - 1);
+    if (G.endlessNightCount - 1 >= 10) unlockAchievement('endless_10');
+    if (G.endlessNightCount - 1 >= 20) {
+      // Secret ending
+    }
+  }
+
+  const msgs = {
+    ilya: ['ОН ВОШЁЛ', 'Илья добрался до тебя...', 'Дверь была открыта слишком долго.'],
+    energy: ['КОНЕЦ', 'Энергия кончилась.', 'Темнота поглотила всё.'],
+    artem: ['ОН ЗАШЁЛ', 'Артём не получил булочку.', 'Это ошибка.'],
+  };
+  const m = msgs[cause] || msgs.ilya;
+  showResult(m[0], '#cc0000', [m[1], m[2], '', '💀 Игра окончена'], () => {
+    document.getElementById('gameCanvas').classList.add('hidden');
+    G = null;
+  });
+}
+
+function onVictory() {
+  cancelAnimationFrame(animFrame);
+  stopAmbience();
+  playSound('victory', 0.7);
+  const nightNum = save.nightsSurvived + 1;
+  save.nightsSurvived++;
+  const coins = Math.floor(50 * G.coinBonus);
+  save.coins += coins;
+
+  // Achievements
+  if (save.nightsSurvived === 1) unlockAchievement('first_survivor');
+  if (!G.statFlashlight) unlockAchievement('iron_nerves');
+  if (!G.statDoor) {
+    // Track no-door streak
+    if (!save.questProgress) save.questProgress = {};
+    save.questProgress['quest_no_door_3'] = (save.questProgress['quest_no_door_3']||0)+1;
+    if (save.questProgress['quest_no_door_3'] >= 3 && !save.completedQuests.includes('quest_no_door_3')) {
+      save.completedQuests.push('quest_no_door_3');
+      save.coins += 60;
+      notify('КВЕСТ ВЫПОЛНЕН: Без двери! +60 монет', '#00ffc8', 4);
+    }
+    if (save.nightsSurvived >= 3) unlockAchievement('no_door_3_nights');
+  }
+  const energyLeft = G.energy / G.startEnergy * 100;
+  if (energyLeft >= 50) unlockAchievement('economist');
+  const spent = (G.startEnergyValue - G.energy) / G.startEnergyValue * 100;
+  if (spent < 30) {
+    unlockAchievement('energy_saver');
+    if (!save.completedQuests.includes('quest_energy_30')) {
+      save.completedQuests.push('quest_energy_30');
+      save.coins += 40;
+      notify('КВЕСТ ВЫПОЛНЕН: Экономия энергии! +40 монет', '#00ffc8', 4);
+    }
+  }
+  if (G.diffKey === 'hard') {
+    save.hardcoreNights = (save.hardcoreNights||0)+1;
+    if (save.hardcoreNights >= 5) unlockAchievement('hardcorer');
+  }
+  if (G.isSpeedrun) unlockAchievement('speedrunner');
+
+  saveAll();
+
+  const lines = [
+    `🌙 Ночь пережита!`,
+    `💰 Получено монет: +${coins}`,
+    `⚡ Осталось энергии: ${Math.round(energyLeft)}%`,
+  ];
+
+  showResult('Ты выжил!', '#ffd700', lines, () => {
+    document.getElementById('gameCanvas').classList.add('hidden');
+    G = null;
+    showNewspaper(nightNum, () => {
+      showScreen('menuScreen');
+      updateMenu();
+    });
+  });
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// PAUSE
+// ══════════════════════════════════════════════════════════════════════
+function pauseGame() {
+  if (!G) return;
+  G.paused = true;
+  document.getElementById('pauseOverlay').classList.remove('hidden');
+  document.getElementById('pauseVol').value = settings.volume;
+  document.getElementById('pauseVolVal').textContent = settings.volume + '%';
+}
+function resumeGame() {
+  if (!G) return;
+  G.paused = false;
+  G.nightStart = performance.now()/1000 - G.elapsed;
+  document.getElementById('pauseOverlay').classList.add('hidden');
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// INPUT
+// ══════════════════════════════════════════════════════════════════════
+document.addEventListener('keydown', e => {
+  if (!G || G.paused) {
+    if (e.code === 'Escape' && G?.paused) resumeGame();
+    return;
+  }
+  if (G.inMinigame) {
+    if (e.code === 'Space') { e.preventDefault(); triggerMinigame(); }
+    return;
+  }
+  if (G.inIntercom) {
+    if (e.key === '1') chooseIntercom(0);
+    else if (e.key === '2') chooseIntercom(1);
+    else if (e.key === '3') chooseIntercom(2);
+    return;
+  }
+
+  switch(e.code) {
+    case 'Escape': pauseGame(); break;
+    case 'Space':
+      e.preventDefault();
+      G.cameraActive = !G.cameraActive;
+      playSound(G.cameraActive ? 'camera_open' : 'camera_open');
+      break;
+    case 'KeyD':
+      if (!G.doorOverheat) {
+        const wasOpen = !G.doorClosed;
+        G.doorClosed = !G.doorClosed;
+        G.statDoor = true;
+        playSound(G.doorClosed ? 'door_close' : 'door_open');
+      } else notify('Дверь перегрета!', '#ff8800', 2);
+      break;
+    case 'KeyR':
+      G.flashlight = true; G.statFlashlight = true;
+      break;
+    case 'ArrowLeft':
+    case 'KeyA':
+      G.leftRoom = !G.leftRoom;
+      break;
+    case 'KeyW':
+      if (G.leftRoom && G.artemCalledDoor && G.artemAtIntercom) openIntercom();
+      break;
+    case 'Digit1': if (G.cameraActive) { G.currentCamera = 0; playSound('camera_switch', 0.4); } break;
+    case 'Digit2': if (G.cameraActive) { G.currentCamera = 1; playSound('camera_switch', 0.4); } break;
+    case 'Digit3': if (G.cameraActive) { G.currentCamera = 2; playSound('camera_switch', 0.4); } break;
+    case 'Digit4': if (G.cameraActive) { G.currentCamera = 3; playSound('camera_switch', 0.4); } break;
+    case 'Digit5': if (G.cameraActive) { G.currentCamera = 4; playSound('camera_switch', 0.4); } break;
+  }
+});
+
+document.addEventListener('keyup', e => {
+  if (!G) return;
+  if (e.code === 'KeyR') G.flashlight = false;
+});
+
+// Canvas click handling
+canvas.addEventListener('click', e => {
+  if (!G || G.paused) return;
+  if (G.inMinigame) { triggerMinigame(); return; }
+  if (G.inIntercom) return;
+
+  const W = canvas.width, H = canvas.height;
+  const x = e.clientX, y = e.clientY;
+
+  // Camera button
+  const camBtn = { x:W/2-120, y:H-76, w:240, h:56 };
+  if (x>=camBtn.x && x<=camBtn.x+camBtn.w && y>=camBtn.y && y<=camBtn.y+camBtn.h) {
+    G.cameraActive = !G.cameraActive; playSound('camera_open'); return;
+  }
+
+  if (!G.cameraActive) {
+    // Door button
+    const rpx=W-158, rpy=H/2-104;
+    if (x>=rpx && x<=rpx+140 && y>=rpy && y<=rpy+78) {
+      if (!G.doorOverheat) { G.doorClosed = !G.doorClosed; G.statDoor = true; playSound(G.doorClosed ? 'door_close' : 'door_open'); }
+      else notify('Дверь перегрета!', '#ff8800', 2);
+      return;
+    }
+    // Flashlight — hold handled via mousedown/up
+    // Room switch
+    if (x>=20 && x<=150 && y>=H/2-104 && y<=H/2-26) {
+      G.leftRoom = !G.leftRoom; return;
+    }
+    // Intercom button in left room
+    if (G.leftRoom && G.artemCalledDoor && G.artemAtIntercom) {
+      if (x>=W/2-130 && x<=W/2+130 && y>=H/2-100 && y<=H/2) {
+        openIntercom(); return;
+      }
+    }
+  }
+
+  // Camera map node clicks
+  if (G.cameraActive && !G.camerasBroken) {
+    const mapW=220,mapH=200,mx=W-mapW-10,my=H-mapH-10;
+    const nodes = [
+      {i:0,x:mx+110,y:my+150},{i:1,x:mx+140,y:my+110},
+      {i:2,x:mx+120,y:my+30},{i:3,x:mx+30,y:my+30},{i:4,x:mx+200,y:my+30}
+    ];
+    for (const n of nodes) {
+      if (x>=n.x && x<=n.x+30 && y>=n.y && y<=n.y+28) {
+        G.currentCamera = n.i; playSound('camera_switch', 0.4); return;
+      }
+    }
+  }
+});
+
+canvas.addEventListener('mousedown', e => {
+  if (!G || G.inMinigame || G.inIntercom || G.paused) return;
+  const W=canvas.width,H=canvas.height,rpx=W-158,rpy=H/2-4;
+  if (e.clientX>=rpx && e.clientX<=rpx+140 && e.clientY>=rpy && e.clientY<=rpy+80) {
+    G.flashlight = true; G.statFlashlight = true;
+  }
+});
+canvas.addEventListener('mouseup', () => { if (G) G.flashlight = false; });
+canvas.addEventListener('mouseleave', () => { if (G) G.flashlight = false; });
+
+// ══════════════════════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════
+// INIT — сначала загружаем ресурсы, потом запускаем игру
+// ══════════════════════════════════════════════════════════════════════
+document.getElementById('gameCanvas').classList.remove('hidden');
+drawLoadingScreen();
+loadAssets(() => {
+  document.getElementById('gameCanvas').classList.add('hidden');
+  updateMenu();
+  renderSettings();
+});
+</script>
+</body>
+</html>
